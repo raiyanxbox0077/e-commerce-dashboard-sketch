@@ -110,6 +110,7 @@ export function ProfileTab() {
   const { data: tenant, mutate } = useSWR("/api/tenant", fetcher)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState("")
 
   // Account fields
   const [name, setName] = useState("")
@@ -193,16 +194,24 @@ export function ProfileTab() {
 
   async function handleSave(payload: Record<string, unknown>) {
     setSaving(true)
+    setSaveError("")
     try {
-      await fetch("/api/tenant", {
+      const res = await fetch("/api/tenant", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSaveError(json?.error ?? `Save failed (${res.status})`)
+        return
+      }
       await mutate()
       globalMutate("/api/tenant")
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Save failed")
     } finally {
       setSaving(false)
     }
@@ -210,16 +219,19 @@ export function ProfileTab() {
 
   function SaveButton({ payload }: { payload: Record<string, unknown> }) {
     return (
-      <button
-        onClick={() => handleSave(payload)}
-        disabled={saving}
-        className={cn(
-          "bg-[#0066cc] text-white text-[13px] font-semibold rounded-full px-5 py-2.5 active:scale-95 transition-all disabled:opacity-60",
-          saved && "bg-[#34c759]"
-        )}
-      >
-        {saved ? "Saved!" : saving ? "Saving…" : "Save Changes"}
-      </button>
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={() => handleSave(payload)}
+          disabled={saving}
+          className={cn(
+            "bg-[#0066cc] text-white text-[13px] font-semibold rounded-full px-5 py-2.5 active:scale-95 transition-all disabled:opacity-60 w-fit",
+            saved && "bg-[#34c759]"
+          )}
+        >
+          {saved ? "Saved!" : saving ? "Saving…" : "Save Changes"}
+        </button>
+        {saveError && <p className="text-[12px] text-red-600">{saveError}</p>}
+      </div>
     )
   }
 
