@@ -58,15 +58,18 @@ function formatDuration(sec?: number) {
 function AudioPlayer({ src, label }: { src: string; label: string }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrent] = useState(0)
+  const [error, setError] = useState(false)
+
+  // Don't render anything if src is empty — prevents NotSupportedError
+  if (!src || !src.trim()) return null
 
   function toggle() {
     const a = audioRef.current
     if (!a) return
     if (playing) { a.pause(); setPlaying(false) }
-    else { a.play(); setPlaying(true) }
+    else { a.play().catch(() => setError(true)); setPlaying(true) }
   }
 
   function seek(e: React.ChangeEvent<HTMLInputElement>) {
@@ -91,39 +94,55 @@ function AudioPlayer({ src, label }: { src: string; label: string }) {
         <a
           href={src}
           download
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex items-center gap-1 text-[11px] text-[#0066cc] hover:underline font-medium"
           onClick={e => e.stopPropagation()}
         >
           <Download className="w-3 h-3" /> Download
         </a>
       </div>
-      <audio
-        ref={audioRef}
-        src={src}
-        onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
-        onTimeUpdate={() => { setCurrent(audioRef.current?.currentTime ?? 0); setProgress((audioRef.current?.currentTime ?? 0) / (audioRef.current?.duration || 1) * 100) }}
-        onEnded={() => setPlaying(false)}
-        className="hidden"
-      />
-      <div className="flex items-center gap-2">
-        <button
-          onClick={toggle}
-          className="w-8 h-8 rounded-full bg-[#0066cc] flex items-center justify-center shrink-0 hover:bg-[#0055b3] transition-colors"
-        >
-          {playing
-            ? <Pause className="w-3.5 h-3.5 text-white fill-white" />
-            : <Play className="w-3.5 h-3.5 text-white fill-white" />}
-        </button>
-        <input
-          type="range" min={0} max={duration || 1} step={0.1}
-          value={currentTime}
-          onChange={seek}
-          className="flex-1 h-1.5 accent-[#0066cc] cursor-pointer"
-        />
-        <span className="text-[11px] text-[#6e6e73] font-mono shrink-0 w-16 text-right">
-          {fmt(currentTime)} / {fmt(duration)}
-        </span>
-      </div>
+      {error ? (
+        <p className="text-[12px] text-[#6e6e73]">Unable to play — use the download link above.</p>
+      ) : (
+        <>
+          {/* Only set src when we have a valid URL — prevents NotSupportedError */}
+          <audio
+            ref={audioRef}
+            onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
+            onTimeUpdate={() => {
+              const a = audioRef.current
+              if (!a) return
+              setCurrent(a.currentTime)
+            }}
+            onEnded={() => setPlaying(false)}
+            onError={() => setError(true)}
+            className="hidden"
+            preload="none"
+          >
+            <source src={src} />
+          </audio>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggle}
+              className="w-8 h-8 rounded-full bg-[#0066cc] flex items-center justify-center shrink-0 hover:bg-[#0055b3] transition-colors"
+            >
+              {playing
+                ? <Pause className="w-3.5 h-3.5 text-white fill-white" />
+                : <Play className="w-3.5 h-3.5 text-white fill-white" />}
+            </button>
+            <input
+              type="range" min={0} max={duration || 1} step={0.1}
+              value={currentTime}
+              onChange={seek}
+              className="flex-1 h-1.5 accent-[#0066cc] cursor-pointer"
+            />
+            <span className="text-[11px] text-[#6e6e73] font-mono shrink-0 w-16 text-right">
+              {fmt(currentTime)} / {fmt(duration)}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   )
 }
