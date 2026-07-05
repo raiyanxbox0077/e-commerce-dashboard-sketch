@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 import {
   LayoutDashboard,
   PhoneCall,
@@ -12,6 +13,7 @@ import {
   ChevronRight,
   Zap,
   X,
+  LogOut,
 } from "lucide-react"
 
 export type NavTab =
@@ -130,8 +132,8 @@ export function Sidebar({
           </div>
         </nav>
 
-        {/* Wallet balance chip */}
-        <div className="px-3 pb-5">
+        {/* Wallet balance chip + Logout */}
+        <div className="px-3 pb-5 space-y-2">
           <button
             onClick={() => handleSelect("wallet")}
             className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-[#f5f5f7] hairline hover:bg-[#ebebf0] transition-colors"
@@ -147,9 +149,27 @@ export function Sidebar({
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-[#6e6e73]" />
           </button>
+          <LogoutButton />
         </div>
       </aside>
     </>
+  )
+}
+
+function LogoutButton() {
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = "/auth/login"
+  }
+  return (
+    <button
+      onClick={handleLogout}
+      className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium text-[#ff3b30] hover:bg-[#ff3b30]/8 transition-colors"
+    >
+      <LogOut className="w-4 h-4 shrink-0" />
+      Sign Out
+    </button>
   )
 }
 

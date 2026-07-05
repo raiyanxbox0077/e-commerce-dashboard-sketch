@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
-import { User, Key, Bell, Shield, Building2, Eye, EyeOff, CheckCircle2, Copy } from "lucide-react"
+import { User, Key, Bell, Shield, Building2, Eye, EyeOff, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type ProfileSection = "account" | "integrations" | "security" | "notifications"
@@ -116,6 +116,33 @@ export function ProfileTab() {
   const [email, setEmail] = useState("")
   const [org, setOrg] = useState("")
   const [phone, setPhone] = useState("")
+
+  // BotSailor auto-detect
+  const [detectingPhone, setDetectingPhone] = useState(false)
+  const [detectError, setDetectError] = useState("")
+  const [detectedAccounts, setDetectedAccounts] = useState<{ phone_number_id: string; display_phone_number: string; name: string }[]>([])
+
+  async function autoDetectPhoneId() {
+    setDetectingPhone(true); setDetectError(""); setDetectedAccounts([])
+    try {
+      const res = await fetch("/api/whatsapp/verify")
+      const json = await res.json()
+      if (json.error) { setDetectError(json.error); return }
+      const accounts = json.accounts ?? []
+      if (accounts.length === 1) {
+        setBotsailorPhoneId(accounts[0].phone_number_id)
+        setDetectedAccounts(accounts)
+      } else if (accounts.length > 1) {
+        setDetectedAccounts(accounts)
+      } else {
+        setDetectError("No WhatsApp accounts found on this BotSailor key.")
+      }
+    } catch {
+      setDetectError("Failed to reach BotSailor. Check your API key.")
+    } finally {
+      setDetectingPhone(false)
+    }
+  }
 
   // Integration fields
   const [voiceApiKey, setVoiceApiKey] = useState("")
@@ -267,7 +294,46 @@ export function ProfileTab() {
                   </span>
                 </div>
                 <SecretField label="API Token" value={botsailorKey} onChange={setBotsailorKey} hint="BotSailor account API token" />
-                <TextField label="Phone Number ID" value={botsailorPhoneId} onChange={setBotsailorPhoneId} hint="WhatsApp Business phone number ID" />
+                <TextField label="Phone Number ID" value={botsailorPhoneId} onChange={setBotsailorPhoneId} hint="WhatsApp Business phone number ID (e.g. 11906XXXXXX40020)" />
+                {/* Auto-detect button */}
+                <div className="py-2">
+                  <button
+                    onClick={autoDetectPhoneId}
+                    disabled={!botsailorKey || detectingPhone}
+                    className="flex items-center gap-2 text-[12px] font-medium text-[#0066cc] hover:text-[#0055b3] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {detectingPhone
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <RefreshCw className="w-3.5 h-3.5" />}
+                    Auto-detect Phone Number ID from BotSailor
+                  </button>
+                  {detectError && <p className="text-[12px] text-red-600 mt-1.5">{detectError}</p>}
+                  {detectedAccounts.length > 1 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[12px] text-[#6e6e73]">Multiple accounts found — click to select:</p>
+                      {detectedAccounts.map(a => (
+                        <button
+                          key={a.phone_number_id}
+                          onClick={() => setBotsailorPhoneId(a.phone_number_id)}
+                          className={cn(
+                            "w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-[12px] border transition-colors",
+                            botsailorPhoneId === a.phone_number_id
+                              ? "border-[#0066cc] bg-[#0066cc]/5 text-[#0066cc]"
+                              : "border-[rgba(0,0,0,0.08)] hover:bg-[#f5f5f7] text-[#1d1d1f]"
+                          )}
+                        >
+                          <span className="font-medium">{a.display_phone_number}</span>
+                          <span className="font-mono text-[#6e6e73]">{a.phone_number_id}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {detectedAccounts.length === 1 && botsailorPhoneId === detectedAccounts[0].phone_number_id && (
+                    <p className="text-[12px] text-[#34c759] mt-1.5 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Auto-filled: {detectedAccounts[0].display_phone_number}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Shopify */}

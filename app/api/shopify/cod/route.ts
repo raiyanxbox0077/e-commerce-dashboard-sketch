@@ -32,17 +32,26 @@ export async function GET(req: Request) {
   const search = searchParams.get('search') ?? ''
   const status = searchParams.get('status') ?? ''
 
-  let query = clientDb
-    .from('cod_confirmation')
-    .select('*', { count: 'exact' })
-    .order('order_date', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+  // Try multiple possible table name variations
+  const tableNames = ['cod_confirmation', 'COD_confirmation', 'cod_confirmations', 'orders_cod']
+  let data = null, error = null, count = null
 
-  if (search) query = query.ilike('customer_name', `%${search}%`)
-  if (status) query = query.eq('cod_status', status)
+  for (const tableName of tableNames) {
+    let q = clientDb
+      .from(tableName)
+      .select('*', { count: 'exact' })
+      .order('order_date', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1)
+    if (search) q = q.ilike('customer_name', `%${search}%`)
+    if (status) q = q.eq('cod_status', status)
+    const result = await q
+    if (!result.error) {
+      data = result.data; count = result.count; error = null; break
+    }
+    error = result.error
+  }
 
-  const { data, error, count } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: `Table not found. Please check your Supabase table name. Tried: ${tableNames.join(', ')}. Error: ${error.message}` }, { status: 500 })
 
   return NextResponse.json({ data, count, page, limit })
 }
