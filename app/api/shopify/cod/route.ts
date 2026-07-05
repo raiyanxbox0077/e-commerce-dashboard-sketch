@@ -18,7 +18,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Client Supabase credentials not configured. Add them in Profile > Integrations.' }, { status: 400 })
   }
 
-  const clientDb = createSupabaseClient(tenant.client_supabase_url, tenant.client_supabase_anon_key)
+  // Auto-correct: user may have pasted the dashboard URL instead of the API URL
+  // e.g. https://supabase.com/dashboard/project/PROJECTID → https://PROJECTID.supabase.co
+  let supabaseUrl = tenant.client_supabase_url.trim()
+  const dashboardMatch = supabaseUrl.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i)
+  if (dashboardMatch) supabaseUrl = `https://${dashboardMatch[1]}.supabase.co`
+
+  const clientDb = createSupabaseClient(supabaseUrl, tenant.client_supabase_anon_key)
 
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') ?? '1')

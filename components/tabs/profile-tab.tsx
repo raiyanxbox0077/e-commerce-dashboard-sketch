@@ -284,7 +284,7 @@ export function ProfileTab() {
                   </span>
                 </div>
                 <TextField label="Store Domain" value={shopifyDomain} onChange={setShopifyDomain} hint="e.g. my-store.myshopify.com" />
-                <TextField label="Supabase URL" value={clientSupabaseUrl} onChange={setClientSupabaseUrl} hint="Client project URL" />
+                <TextField label="Supabase URL" value={clientSupabaseUrl} onChange={setClientSupabaseUrl} hint="e.g. https://iaisgphpjgwmrzkffvgu.supabase.co (not the dashboard URL)" />
                 <SecretField label="Anon Key" value={clientSupabaseKey} onChange={setClientSupabaseKey} hint="Client project anon key" />
               </div>
 

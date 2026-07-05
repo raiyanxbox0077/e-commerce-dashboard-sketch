@@ -34,7 +34,11 @@ export async function GET() {
   if (tenant?.client_supabase_url && tenant?.client_supabase_anon_key) {
     try {
       const { createClient: createClientDynamic } = await import('@supabase/supabase-js')
-      const clientDb = createClientDynamic(tenant.client_supabase_url, tenant.client_supabase_anon_key)
+      // Auto-correct dashboard URL → API URL
+      let supabaseUrl = tenant.client_supabase_url.trim()
+      const dashboardMatch = supabaseUrl.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i)
+      if (dashboardMatch) supabaseUrl = `https://${dashboardMatch[1]}.supabase.co`
+      const clientDb = createClientDynamic(supabaseUrl, tenant.client_supabase_anon_key)
 
       const [{ count: cod }, { count: cart }] = await Promise.all([
         clientDb.from('cod_confirmation').select('*', { count: 'exact', head: true }),

@@ -83,10 +83,17 @@ export function WhatsAppTab() {
     fetcher, { refreshInterval: 8000 }
   )
 
-  // BotSailor returns { status: "1", message: [...] }
-  const chats: BotSailorChat[] = chatsData?.message ?? chatsData?.data ?? chatsData?.chats ?? []
-  const contacts: BotSailorContact[] = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers ?? []
-  const messages: Message[] = messagesData?.message ?? messagesData?.data ?? messagesData?.messages ?? []
+  // BotSailor returns { status: "1", message: [...] } — message can be a string on error, guard with isArray
+  const rawChats = chatsData?.message ?? chatsData?.data ?? chatsData?.chats
+  const chats: BotSailorChat[] = Array.isArray(rawChats) ? rawChats : []
+  const rawContacts = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers
+  const contacts: BotSailorContact[] = Array.isArray(rawContacts) ? rawContacts : []
+  const rawMessages = messagesData?.message ?? messagesData?.data ?? messagesData?.messages
+  const messages: Message[] = Array.isArray(rawMessages) ? rawMessages : []
+  // Error from BotSailor comes as message string when status != "1"
+  const waError = (chatsData?.status === "0" || contactsData?.status === "0")
+    ? (typeof chatsData?.message === "string" ? chatsData.message : typeof contactsData?.message === "string" ? contactsData.message : null)
+    : chatsData?.error ?? contactsData?.error ?? null
 
   const filteredChats = search
     ? chats.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(search.toLowerCase()) || (c.phone ?? "").includes(search))
@@ -167,10 +174,10 @@ export function WhatsAppTab() {
           </div>
 
           {/* Error states */}
-          {(chatsData?.error || contactsData?.error) && (
+          {waError && (
             <div className="mx-3 mt-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-[12px] text-red-700">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {chatsData?.error ?? contactsData?.error}
+              {waError}
             </div>
           )}
 
@@ -197,7 +204,7 @@ export function WhatsAppTab() {
                 return (
                   <button
                     key={sid}
-                    onClick={() => { setSelectedId(sid); setSelectedPhone(chat.phone ?? chat.chat_id ?? null) }}
+                    onClick={() => { setSelectedId(sid); setSelectedPhone(chat.chat_id ?? chat.phone ?? null) }}
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-3.5 border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors text-left",
                       selectedId === sid && "bg-[#f5f5f7]"
@@ -251,7 +258,7 @@ export function WhatsAppTab() {
               ) : contacts.map(c => (
                 <button
                   key={c.subscriber_id}
-                  onClick={() => { setSelectedId(c.subscriber_id); setSelectedPhone(c.phone ?? c.chat_id ?? null) }}
+                  onClick={() => { setSelectedId(c.subscriber_id); setSelectedPhone(c.chat_id ?? c.phone ?? null) }}
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3.5 border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors text-left",
                     selectedId === c.subscriber_id && "bg-[#f5f5f7]"
