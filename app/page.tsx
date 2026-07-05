@@ -1,5 +1,5 @@
-import DashboardBlueprint from "@/components/dashboard-blueprint"
+import { redirect } from 'next/navigation'
 
-export default function Page() {
-  return <DashboardBlueprint />
+export default function RootPage() {
+  redirect('/auth/login')
 }
