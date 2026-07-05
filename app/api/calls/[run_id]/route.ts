@@ -17,19 +17,18 @@ export async function GET(
     .single()
 
   const apiKey = tenant?.voice_api_key
-  // Run detail lives on app.dograh.com regardless of the voice base URL (which may point to larynxai.in)
-  const baseUrl = 'https://app.dograh.com'
+  const baseUrl = (tenant?.voice_base_url ?? 'https://voice.larynxai.in').replace(/\/$/, '')
   if (!apiKey) return NextResponse.json({ error: 'Voice API key not configured.' }, { status: 400 })
 
   const { searchParams } = new URL(req.url)
   const workflowId = searchParams.get('workflow_id')
-  if (!workflowId) return NextResponse.json({ error: 'workflow_id is required' }, { status: 400 })
 
-  // Dograh: GET /api/v1/workflow/{workflow_id}/runs/{run_id}
-  const res = await fetch(
-    `${baseUrl}/api/v1/workflow/${workflowId}/runs/${run_id}`,
-    { headers: { 'X-API-Key': apiKey } }
-  )
+  // If we have a workflow_id, use the scoped endpoint; otherwise fall back to org-wide run lookup
+  const endpoint = workflowId
+    ? `${baseUrl}/api/v1/workflow/${workflowId}/runs/${run_id}`
+    : `${baseUrl}/api/v1/runs/${run_id}`
+
+  const res = await fetch(endpoint, { headers: { 'X-API-Key': apiKey } })
   const raw = await res.json()
 
   // Normalise response fields

@@ -9,8 +9,7 @@ async function getTenantVoiceConfig(supabase: Awaited<ReturnType<typeof createCl
     .single()
   return {
     apiKey: data?.voice_api_key ?? null,
-    // Dograh runs + workflows live on app.dograh.com
-    baseUrl: 'https://app.dograh.com',
+    baseUrl: (data?.voice_base_url ?? 'https://voice.larynxai.in').replace(/\/$/, ''),
   }
 }
 

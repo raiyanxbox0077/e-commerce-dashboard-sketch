@@ -13,7 +13,7 @@ export async function GET() {
     .single()
 
   const apiKey = tenant?.voice_api_key
-  const baseUrl = 'https://app.dograh.com'
+  const baseUrl = (tenant?.voice_base_url ?? 'https://voice.larynxai.in').replace(/\/$/, '')
 
   if (!apiKey) return NextResponse.json({ error: 'Voice API key not configured.' }, { status: 400 })
 

@@ -9,7 +9,7 @@ export async function GET(req: Request) {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('client_supabase_url, client_supabase_anon_key')
+    .select('client_supabase_url, client_supabase_anon_key, cart_table_name')
     .eq('user_id', user.id)
     .single()
 
@@ -29,8 +29,9 @@ export async function GET(req: Request) {
   const limit = parseInt(searchParams.get('limit') ?? '20')
   const search = searchParams.get('search') ?? ''
 
+  const cartTable = tenant.cart_table_name || 'E-commerce add to cart'
   let query = clientDb
-    .from('E-commerce add to cart')
+    .from(cartTable)
     .select('*', { count: 'exact' })
     .order('order_date', { ascending: false })
     .range((page - 1) * limit, page * limit - 1)

@@ -152,6 +152,8 @@ export function ProfileTab() {
   const [shopifyDomain, setShopifyDomain] = useState("")
   const [clientSupabaseUrl, setClientSupabaseUrl] = useState("")
   const [clientSupabaseKey, setClientSupabaseKey] = useState("")
+  const [codTableName, setCodTableName] = useState("")
+  const [cartTableName, setCartTableName] = useState("")
   const [razorpayKeyId, setRazorpayKeyId] = useState("")
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("")
 
@@ -177,8 +179,10 @@ export function ProfileTab() {
     setBotsailorKey(tenant.botsailor_api_key ?? "")
     setBotsailorPhoneId(tenant.botsailor_phone_id ?? "")
     setShopifyDomain(tenant.shopify_store_domain ?? "")
-    setClientSupabaseUrl(tenant.client_supabase_url ?? "")
-    setClientSupabaseKey(tenant.client_supabase_anon_key ?? "")
+  setClientSupabaseUrl(tenant.client_supabase_url ?? "")
+  setClientSupabaseKey(tenant.client_supabase_anon_key ?? "")
+  setCodTableName(tenant.cod_table_name ?? "")
+  setCartTableName(tenant.cart_table_name ?? "")
     setRazorpayKeyId(tenant.razorpay_key_id ?? "")
     setRazorpayKeySecret(tenant.razorpay_key_secret ?? "")
     setNotifs(n => ({
@@ -352,6 +356,8 @@ export function ProfileTab() {
                 <TextField label="Store Domain" value={shopifyDomain} onChange={setShopifyDomain} hint="e.g. my-store.myshopify.com" />
                 <TextField label="Supabase URL" value={clientSupabaseUrl} onChange={setClientSupabaseUrl} hint="e.g. https://iaisgphpjgwmrzkffvgu.supabase.co (not the dashboard URL)" />
                 <SecretField label="Anon Key" value={clientSupabaseKey} onChange={setClientSupabaseKey} hint="Client project anon key" />
+                <TextField label="COD Table Name" value={codTableName} onChange={setCodTableName} hint={`Exact table name in your Supabase (default: cod_confirmation)`} />
+                <TextField label="Cart Table Name" value={cartTableName} onChange={setCartTableName} hint={`Exact table name in your Supabase (default: E-commerce add to cart)`} />
               </div>
 
               {/* Razorpay */}
@@ -381,6 +387,8 @@ export function ProfileTab() {
                 shopify_store_domain: shopifyDomain,
                 client_supabase_url: clientSupabaseUrl,
                 client_supabase_anon_key: clientSupabaseKey,
+                cod_table_name: codTableName,
+                cart_table_name: cartTableName,
                 razorpay_key_id: razorpayKeyId,
                 razorpay_key_secret: razorpayKeySecret,
               }} />

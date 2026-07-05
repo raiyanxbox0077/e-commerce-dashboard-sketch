@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   // Get client's own Supabase credentials
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('client_supabase_url, client_supabase_anon_key')
+    .select('client_supabase_url, client_supabase_anon_key, cod_table_name, cart_table_name')
     .eq('user_id', user.id)
     .single()
 
@@ -32,8 +32,11 @@ export async function GET(req: Request) {
   const search = searchParams.get('search') ?? ''
   const status = searchParams.get('status') ?? ''
 
-  // Try multiple possible table name variations
-  const tableNames = ['cod_confirmation', 'COD_confirmation', 'cod_confirmations', 'orders_cod']
+  // Try tenant-configured name first, then common variations
+  const tableNames = [
+    ...(tenant.cod_table_name ? [tenant.cod_table_name] : []),
+    'cod_confirmation', 'COD Confirmation', 'COD_confirmation', 'cod_confirmations', 'orders_cod', 'cod_orders',
+  ]
   let data = null, error = null, count = null
 
   for (const tableName of tableNames) {

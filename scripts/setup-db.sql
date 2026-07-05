@@ -91,5 +91,8 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
 
--- 6. If tenants table already exists but is missing the phone_number_id column, add it
+-- 6. Add any missing columns if tenants table already exists
 alter table tenants add column if not exists botsailor_phone_id text;
+alter table tenants add column if not exists cod_table_name text;
+alter table tenants add column if not exists cart_table_name text;
+alter table tenants add column if not exists wallet_balance numeric(12,2) default 0;
