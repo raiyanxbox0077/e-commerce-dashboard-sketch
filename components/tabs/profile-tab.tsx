@@ -352,10 +352,34 @@ export function ProfileTab() {
   )
 }
 
+function PasswordField({ label, value, onChange, show, onToggle }: {
+  label: string; value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void
+}) {
+  return (
+    <div>
+      <label className="block text-[13px] font-medium text-[#1d1d1f] mb-1.5">{label}</label>
+      <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="flex-1 bg-transparent text-[13px] text-[#1d1d1f] outline-none"
+        />
+        <button type="button" onClick={onToggle} className="text-[#6e6e73]">
+          {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function PasswordSection() {
   const [current, setCurrent] = useState("")
   const [next, setNext] = useState("")
   const [confirm, setConfirm] = useState("")
+  const [showCurrent, setShowCurrent] = useState(false)
+  const [showNext, setShowNext] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState("")
   const [done, setDone] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -382,27 +406,9 @@ function PasswordSection() {
 
   return (
     <div className="space-y-4">
-      {["Current Password", "New Password", "Confirm Password"].map((label, i) => {
-        const val = [current, next, confirm][i]
-        const setter = [setCurrent, setNext, setConfirm][i]
-        const [show, setShow] = useState(false)
-        return (
-          <div key={label}>
-            <label className="block text-[13px] font-medium text-[#1d1d1f] mb-1.5">{label}</label>
-            <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
-              <input
-                type={show ? "text" : "password"}
-                value={val}
-                onChange={e => setter(e.target.value)}
-                className="flex-1 bg-transparent text-[13px] text-[#1d1d1f] outline-none"
-              />
-              <button onClick={() => setShow(s => !s)} className="text-[#6e6e73]">
-                {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </div>
-        )
-      })}
+      <PasswordField label="Current Password" value={current} onChange={setCurrent} show={showCurrent} onToggle={() => setShowCurrent(s => !s)} />
+      <PasswordField label="New Password" value={next} onChange={setNext} show={showNext} onToggle={() => setShowNext(s => !s)} />
+      <PasswordField label="Confirm Password" value={confirm} onChange={setConfirm} show={showConfirm} onToggle={() => setShowConfirm(s => !s)} />
       {error && <p className="text-[13px] text-red-600">{error}</p>}
       {done && <p className="text-[13px] text-[#34c759]">Password updated successfully!</p>}
       <button
