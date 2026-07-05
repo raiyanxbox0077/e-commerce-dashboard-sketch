@@ -3,34 +3,17 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'AI Dashboard — Dograh + BotSailor',
-  description: 'Dashboard blueprint for Dograh AI calls, Shopify COD/cart, and BotSailor WhatsApp CRM',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
+  title: 'LarynxAI Dashboard',
+  description: 'AI voice calls, Shopify order management, and WhatsApp CRM — all in one place.',
+  generator: 'v0.dev',
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'light dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
+  colorScheme: 'light',
+  themeColor: '#ffffff',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({
@@ -39,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">
+    <html lang="en" className="bg-background">
+      <body className="antialiased font-sans">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
