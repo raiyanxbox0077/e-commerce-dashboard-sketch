@@ -60,6 +60,7 @@ export function WhatsAppTab() {
   const { tenant } = useTenant()
   const [subTab, setSubTab] = useState<WaSubTab>("chats")
   const [selectedId, setSelectedId] = useState<string | number | null>(null)
+  const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [messageInput, setMessageInput] = useState("")
   const [sending, setSending] = useState(false)
@@ -78,13 +79,14 @@ export function WhatsAppTab() {
     fetcher
   )
   const { data: messagesData, isLoading: msgLoading } = useSWR(
-    selectedId ? `/api/whatsapp/messages?subscriber_id=${selectedId}` : null,
+    selectedPhone ? `/api/whatsapp/messages?phone_number=${encodeURIComponent(selectedPhone)}` : null,
     fetcher, { refreshInterval: 8000 }
   )
 
-  const chats: BotSailorChat[] = chatsData?.data ?? chatsData?.chats ?? []
-  const contacts: BotSailorContact[] = contactsData?.data ?? contactsData?.subscribers ?? []
-  const messages: Message[] = messagesData?.data ?? messagesData?.messages ?? []
+  // BotSailor returns { status: "1", message: [...] }
+  const chats: BotSailorChat[] = chatsData?.message ?? chatsData?.data ?? chatsData?.chats ?? []
+  const contacts: BotSailorContact[] = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers ?? []
+  const messages: Message[] = messagesData?.message ?? messagesData?.data ?? messagesData?.messages ?? []
 
   const filteredChats = search
     ? chats.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(search.toLowerCase()) || (c.phone ?? "").includes(search))
@@ -99,16 +101,16 @@ export function WhatsAppTab() {
   }, [messages])
 
   async function handleSend() {
-    if (!messageInput.trim() || !selectedId || sending) return
+    if (!messageInput.trim() || !selectedPhone || sending) return
     setSending(true)
     try {
       await fetch("/api/whatsapp/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriber_id: selectedId, message: messageInput.trim() }),
+        body: JSON.stringify({ phone_number: selectedPhone, message: messageInput.trim() }),
       })
       setMessageInput("")
-      globalMutate(`/api/whatsapp/messages?subscriber_id=${selectedId}`)
+      globalMutate(`/api/whatsapp/messages?phone_number=${encodeURIComponent(selectedPhone)}`)
     } finally {
       setSending(false)
     }
@@ -143,7 +145,7 @@ export function WhatsAppTab() {
               {([["chats", "Chats"], ["contacts", "Contacts"]] as [WaSubTab, string][]).map(([id, label]) => (
                 <button
                   key={id}
-                  onClick={() => { setSubTab(id); setSelectedId(null); setSearch("") }}
+                  onClick={() => { setSubTab(id); setSelectedId(null); setSelectedPhone(null); setSearch("") }}
                   className={cn(
                     "flex-1 py-2 rounded-lg text-[13px] font-medium transition-all",
                     subTab === id ? "bg-white text-[#1d1d1f] shadow-sm" : "text-[#6e6e73]"
@@ -195,7 +197,7 @@ export function WhatsAppTab() {
                 return (
                   <button
                     key={sid}
-                    onClick={() => setSelectedId(sid)}
+                    onClick={() => { setSelectedId(sid); setSelectedPhone(chat.phone ?? chat.chat_id ?? null) }}
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-3.5 border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors text-left",
                       selectedId === sid && "bg-[#f5f5f7]"
@@ -249,7 +251,7 @@ export function WhatsAppTab() {
               ) : contacts.map(c => (
                 <button
                   key={c.subscriber_id}
-                  onClick={() => setSelectedId(c.subscriber_id)}
+                  onClick={() => { setSelectedId(c.subscriber_id); setSelectedPhone(c.phone ?? c.chat_id ?? null) }}
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3.5 border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors text-left",
                     selectedId === c.subscriber_id && "bg-[#f5f5f7]"
@@ -280,7 +282,7 @@ export function WhatsAppTab() {
         {selectedId && selectedPerson ? (
           <div className="flex flex-col flex-1 min-w-0">
             <div className="flex items-center gap-3 px-4 py-3 border-b border-black/[0.08] bg-white">
-              <button onClick={() => setSelectedId(null)} className="lg:hidden p-1.5 -ml-1 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73]">
+              <button onClick={() => { setSelectedId(null); setSelectedPhone(null) }} className="lg:hidden p-1.5 -ml-1 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73]">
                 <ChevronRight className="w-4 h-4 rotate-180" />
               </button>
               <div className="w-9 h-9 rounded-full bg-[#0066cc]/10 flex items-center justify-center text-[12px] font-semibold text-[#0066cc] shrink-0">
@@ -303,9 +305,21 @@ export function WhatsAppTab() {
               ) : messages.length === 0 ? (
                 <div className="text-center py-8 text-[13px] text-[#6e6e73]">No messages yet</div>
               ) : messages.map((msg, i) => {
-                const isUser = msg.sender_type === "subscriber" || msg.direction === "incoming"
-                const text = msg.message ?? msg.text ?? ""
-                const time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : (msg.time ?? "")
+                // BotSailor: sender is "subscriber" (customer) or "bot"/"agent"
+                const rawMsg = msg as Record<string, unknown>
+                const isUser = rawMsg.sender === "subscriber" || msg.sender_type === "subscriber" || msg.direction === "incoming"
+                // message_content is a JSON string in BotSailor conversations
+                let text = msg.message ?? msg.text ?? ""
+                if (!text && rawMsg.message_content) {
+                  try {
+                    const mc = JSON.parse(rawMsg.message_content as string)
+                    text = mc?.text?.body ?? mc?.body ?? mc?.interactive?.body?.text ?? JSON.stringify(mc)
+                  } catch {
+                    text = String(rawMsg.message_content)
+                  }
+                }
+                const rawTime = (rawMsg.conversation_time as string | undefined) ?? msg.created_at
+                const time = rawTime ? new Date(rawTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : (msg.time ?? "")
                 return (
                   <div key={msg.id ?? i} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
                     <div className={cn(
