@@ -96,3 +96,7 @@ alter table tenants add column if not exists botsailor_phone_id text;
 alter table tenants add column if not exists cod_table_name text;
 alter table tenants add column if not exists cart_table_name text;
 alter table tenants add column if not exists wallet_balance numeric(12,2) default 0;
+alter table tenants add column if not exists voice_base_url text default 'https://voice.larynxai.in';
+alter table tenants add column if not exists shopify_store_domain text;
+alter table tenants add column if not exists razorpay_key_id text;
+alter table tenants add column if not exists razorpay_key_secret text;
