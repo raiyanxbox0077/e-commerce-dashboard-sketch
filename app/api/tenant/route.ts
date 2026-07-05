@@ -23,11 +23,21 @@ export async function PATCH(req: Request) {
 
   const body = await req.json()
   const allowed = [
+    // profile / account
+    'name', 'email', 'company_name', 'phone',
+    // voice
+    'voice_api_key', 'voice_base_url',
+    // botsailor
+    'botsailor_api_key', 'botsailor_account_id', 'botsailor_phone_id',
+    // shopify / client supabase
+    'shopify_domain', 'shopify_admin_token', 'shopify_store_domain',
     'client_supabase_url', 'client_supabase_anon_key',
-    'botsailor_api_key', 'botsailor_account_id',
-    'voice_api_key', 'shopify_domain', 'shopify_admin_token',
+    // razorpay
+    'razorpay_key_id', 'razorpay_key_secret',
+    // notifications
+    'notification_prefs',
   ]
-  const updates: Record<string, string> = {}
+  const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (body[key] !== undefined) updates[key] = body[key]
   }

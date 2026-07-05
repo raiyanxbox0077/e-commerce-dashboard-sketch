@@ -1,15 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-const VOICE_BASE = 'https://voice.larynxai.in'
-
-async function getTenantVoiceKey(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+async function getTenantVoiceConfig(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
     .from('tenants')
-    .select('voice_api_key')
+    .select('voice_api_key, voice_base_url')
     .eq('user_id', userId)
     .single()
-  return data?.voice_api_key ?? null
+  return {
+    apiKey: data?.voice_api_key ?? null,
+    baseUrl: (data?.voice_base_url ?? 'https://voice.larynxai.in').replace(/\/$/, ''),
+  }
 }
 
 export async function GET(req: Request) {
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const apiKey = await getTenantVoiceKey(supabase, user.id)
+  const { apiKey, baseUrl } = await getTenantVoiceConfig(supabase, user.id)
   if (!apiKey) return NextResponse.json({ error: 'Voice API key not configured. Please add it in Profile > Integrations.' }, { status: 400 })
 
   const { searchParams } = new URL(req.url)
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
   if (status) params.set('status', status)
 
   const res = await fetch(
-    `${VOICE_BASE}/api/v1/workflow/${workflowId}/runs?${params}`,
+    `${baseUrl}/api/v1/workflow/${workflowId}/runs?${params}`,
     { headers: { 'X-API-Key': apiKey } }
   )
   const data = await res.json()

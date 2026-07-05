@@ -1,6 +1,27 @@
 "use client"
 
-import { PhoneCall, ShoppingBag, MessageCircle, TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
+import useSWR from "swr"
+import { PhoneCall, ShoppingBag, TrendingUp, CheckCircle2, XCircle, AlertCircle, Wallet, ArrowUpRight, ArrowDownLeft } from "lucide-react"
+
+const fetcher = (url: string) => fetch(url).then(r => r.json())
+
+interface OverviewData {
+  wallet_balance: number
+  spent_this_month: number
+  credited_this_month: number
+  cod_count: number
+  cart_count: number
+  call_stats: { total: number; completed: number; failed: number; no_answer: number; in_progress: number }
+}
+
+interface WalletTransaction {
+  id: string
+  type: "credit" | "debit"
+  amount: number
+  description: string
+  status: string
+  created_at: string
+}
 
 interface StatCardProps {
   label: string
@@ -34,34 +55,12 @@ function StatCard({ label, value, sub, trend, icon: Icon, iconColor, iconBg }: S
   )
 }
 
-interface ActivityItem {
-  type: "call" | "order" | "whatsapp"
-  title: string
-  sub: string
-  time: string
-  status: "success" | "failed" | "pending"
-}
-
-const ACTIVITY: ActivityItem[] = [
-  { type: "call", title: "COD Confirmation Call", sub: "+91 98765 43210 · Priya Sharma", time: "2m ago", status: "success" },
-  { type: "order", title: "New Add to Cart", sub: "Order #10482 · ₹1,299", time: "5m ago", status: "pending" },
-  { type: "whatsapp", title: "WhatsApp Recovery Sent", sub: "+91 87654 32109 · Ravi Kumar", time: "8m ago", status: "success" },
-  { type: "call", title: "COD Call Failed", sub: "+91 76543 21098 · Anita Patel", time: "12m ago", status: "failed" },
-  { type: "order", title: "COD Confirmed", sub: "Order #10481 · ₹2,499", time: "18m ago", status: "success" },
-  { type: "whatsapp", title: "Customer Reply", sub: "+91 65432 10987 · Deepak Singh", time: "24m ago", status: "success" },
-  { type: "call", title: "Outbound Campaign Call", sub: "+91 54321 09876 · Meera Nair", time: "31m ago", status: "success" },
-]
-
-const STATUS_ICON = {
-  success: <CheckCircle2 className="w-3.5 h-3.5 text-[#34c759]" />,
-  failed: <XCircle className="w-3.5 h-3.5 text-[#ff3b30]" />,
-  pending: <AlertCircle className="w-3.5 h-3.5 text-[#ff9500]" />,
-}
-
-const TYPE_ICON = {
-  call: <PhoneCall className="w-4 h-4 text-[#0066cc]" />,
-  order: <ShoppingBag className="w-4 h-4 text-[#af52de]" />,
-  whatsapp: <MessageCircle className="w-4 h-4 text-[#34c759]" />,
+function timeAgo(dateStr: string) {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
+  if (diff < 60) return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return `${Math.floor(diff / 86400)}d ago`
 }
 
 interface FunnelBarProps {
@@ -140,14 +139,49 @@ function MiniDonut({ segments }: { segments: DonutSegment[] }) {
 }
 
 export function OverviewTab() {
+  const { data, isLoading } = useSWR<OverviewData>("/api/overview", fetcher, { refreshInterval: 30000 })
+  const { data: walletData } = useSWR<{ balance: number; transactions: WalletTransaction[] }>("/api/wallet", fetcher)
+
+  const fmt = (n: number) => n.toLocaleString("en-IN")
+  const fmtRs = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const callTotal = data?.call_stats.total ?? 0
+  const callCompleted = data?.call_stats.completed ?? 0
+  const callSuccessRate = callTotal > 0 ? Math.round((callCompleted / callTotal) * 100) : 0
+
+  const funnelMax = Math.max(callTotal, data?.cod_count ?? 0, 1)
+
+  // Recent activity derived from real wallet transactions
+  const recentTransactions = (walletData?.transactions ?? []).slice(0, 7)
+
   return (
     <div className="space-y-6">
       {/* KPI grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-        <StatCard label="Total Calls" value="1,284" sub="This month" trend={12} icon={PhoneCall} iconColor="text-[#0066cc]" iconBg="bg-[#0066cc]/10" />
-        <StatCard label="COD Confirmed" value="342" sub="83% success rate" trend={8} icon={CheckCircle2} iconColor="text-[#34c759]" iconBg="bg-[#34c759]/10" />
-        <StatCard label="Add to Cart" value="891" sub="₹4.2L cart value" trend={-3} icon={ShoppingBag} iconColor="text-[#af52de]" iconBg="bg-[#af52de]/10" />
-        <StatCard label="WA Conversations" value="2,107" sub="Avg 3.2 min" trend={21} icon={MessageCircle} iconColor="text-[#34c759]" iconBg="bg-[#34c759]/10" />
+        <StatCard
+          label="Total Calls"
+          value={isLoading ? "—" : fmt(callTotal)}
+          sub="This month"
+          icon={PhoneCall} iconColor="text-[#0066cc]" iconBg="bg-[#0066cc]/10"
+        />
+        <StatCard
+          label="COD Confirmed"
+          value={isLoading ? "—" : fmt(data?.cod_count ?? 0)}
+          sub="In client DB"
+          icon={CheckCircle2} iconColor="text-[#34c759]" iconBg="bg-[#34c759]/10"
+        />
+        <StatCard
+          label="Add to Cart"
+          value={isLoading ? "—" : fmt(data?.cart_count ?? 0)}
+          sub="Abandoned checkouts"
+          icon={ShoppingBag} iconColor="text-[#af52de]" iconBg="bg-[#af52de]/10"
+        />
+        <StatCard
+          label="Wallet Balance"
+          value={isLoading ? "—" : fmtRs(data?.wallet_balance ?? 0)}
+          sub={isLoading ? "" : `₹${(data?.spent_this_month ?? 0).toFixed(2)} spent this month`}
+          icon={Wallet} iconColor="text-[#ff9500]" iconBg="bg-[#ff9500]/10"
+        />
       </div>
 
       {/* Middle row */}
@@ -156,34 +190,48 @@ export function OverviewTab() {
         <div className="bg-white rounded-2xl p-5 hairline lg:col-span-1">
           <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">Conversion Funnel</p>
           <p className="text-[12px] text-[#6e6e73] mb-5">Calls → COD → Confirmed</p>
-          <div className="space-y-4">
-            <FunnelBar label="Total Calls Made" value={1284} max={1284} color="#0066cc" />
-            <FunnelBar label="Connected" value={1047} max={1284} color="#5ac8fa" />
-            <FunnelBar label="Interested" value={512} max={1284} color="#af52de" />
-            <FunnelBar label="COD Confirmed" value={342} max={1284} color="#34c759" />
-          </div>
+          {callTotal > 0 || (data?.cod_count ?? 0) > 0 ? (
+            <div className="space-y-4">
+              <FunnelBar label="Total Calls Made" value={callTotal} max={funnelMax} color="#0066cc" />
+              <FunnelBar label="Completed" value={callCompleted} max={funnelMax} color="#5ac8fa" />
+              <FunnelBar label="COD Confirmed" value={data?.cod_count ?? 0} max={funnelMax} color="#34c759" />
+              <FunnelBar label="Abandoned Carts" value={data?.cart_count ?? 0} max={funnelMax} color="#af52de" />
+            </div>
+          ) : (
+            <div className="text-center py-6 text-[13px] text-[#6e6e73]">
+              <PhoneCall className="w-8 h-8 text-[#c7c7cc] mx-auto mb-2" />
+              No call data yet — load a workflow in the Calls tab
+            </div>
+          )}
         </div>
 
         {/* Call status donut */}
         <div className="bg-white rounded-2xl p-5 hairline">
           <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">Call Status</p>
-          <p className="text-[12px] text-[#6e6e73] mb-5">Distribution today</p>
-          <MiniDonut segments={[
-            { label: "Completed", value: 847, color: "#34c759" },
-            { label: "No Answer", value: 237, color: "#ff9500" },
-            { label: "Failed", value: 124, color: "#ff3b30" },
-            { label: "In Progress", value: 76, color: "#0066cc" },
-          ]} />
+          <p className="text-[12px] text-[#6e6e73] mb-5">Distribution this month</p>
+          {callTotal > 0 ? (
+            <MiniDonut segments={[
+              { label: "Completed", value: data?.call_stats.completed ?? 0, color: "#34c759" },
+              { label: "No Answer", value: data?.call_stats.no_answer ?? 0, color: "#ff9500" },
+              { label: "Failed", value: data?.call_stats.failed ?? 0, color: "#ff3b30" },
+              { label: "In Progress", value: data?.call_stats.in_progress ?? 0, color: "#0066cc" },
+            ]} />
+          ) : (
+            <div className="text-center py-6 text-[13px] text-[#6e6e73]">
+              <PhoneCall className="w-8 h-8 text-[#c7c7cc] mx-auto mb-2" />
+              Configure your workflow ID in the Calls tab to see stats
+            </div>
+          )}
         </div>
 
         {/* Quick stats */}
         <div className="bg-white rounded-2xl p-5 hairline space-y-4">
           <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">Quick Stats</p>
           {[
-            { label: "Avg Call Duration", value: "2m 18s", icon: Clock, color: "text-[#0066cc]", bg: "bg-[#0066cc]/10" },
-            { label: "Recovery Rate", value: "38%", icon: TrendingUp, color: "text-[#34c759]", bg: "bg-[#34c759]/10" },
-            { label: "Failed Deliveries", value: "14", icon: XCircle, color: "text-[#ff3b30]", bg: "bg-[#ff3b30]/10" },
-            { label: "Active Agents", value: "3", icon: PhoneCall, color: "text-[#af52de]", bg: "bg-[#af52de]/10" },
+            { label: "Call Success Rate", value: isLoading ? "—" : `${callSuccessRate}%`, icon: TrendingUp, color: "text-[#34c759]", bg: "bg-[#34c759]/10" },
+            { label: "Calls Failed", value: isLoading ? "—" : fmt(data?.call_stats.failed ?? 0), icon: XCircle, color: "text-[#ff3b30]", bg: "bg-[#ff3b30]/10" },
+            { label: "Spent This Month", value: isLoading ? "—" : `₹${(data?.spent_this_month ?? 0).toFixed(0)}`, icon: Wallet, color: "text-[#ff9500]", bg: "bg-[#ff9500]/10" },
+            { label: "Abandoned Carts", value: isLoading ? "—" : fmt(data?.cart_count ?? 0), icon: ShoppingBag, color: "text-[#af52de]", bg: "bg-[#af52de]/10" },
           ].map((s) => (
             <div key={s.label} className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.bg}`}>
@@ -196,25 +244,38 @@ export function OverviewTab() {
         </div>
       </div>
 
-      {/* Activity feed */}
+      {/* Activity feed — real wallet transactions */}
       <div className="bg-white rounded-2xl hairline overflow-hidden">
         <div className="px-5 py-4 border-b border-black/[0.06]">
-          <p className="text-[15px] font-semibold text-[#1d1d1f]">Recent Activity</p>
-          <p className="text-[12px] text-[#6e6e73]">Calls, orders and messages</p>
+          <p className="text-[15px] font-semibold text-[#1d1d1f]">Recent Wallet Activity</p>
+          <p className="text-[12px] text-[#6e6e73]">Credits &amp; debits on your account</p>
         </div>
         <div className="divide-y divide-black/[0.04]">
-          {ACTIVITY.map((item, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3.5 hover:bg-[#f5f5f7] transition-colors">
-              <div className="w-8 h-8 rounded-lg bg-[#f5f5f7] flex items-center justify-center shrink-0">
-                {TYPE_ICON[item.type]}
+          {recentTransactions.length === 0 ? (
+            <div className="px-5 py-10 text-center text-[13px] text-[#6e6e73]">
+              <Wallet className="w-8 h-8 text-[#c7c7cc] mx-auto mb-2" />
+              No transactions yet — recharge your wallet to get started
+            </div>
+          ) : recentTransactions.map((txn) => (
+            <div key={txn.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-[#f5f5f7] transition-colors">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${txn.type === "credit" ? "bg-[#34c759]/10" : "bg-[#ff3b30]/10"}`}>
+                {txn.type === "credit"
+                  ? <ArrowDownLeft className="w-4 h-4 text-[#34c759]" />
+                  : <ArrowUpRight className="w-4 h-4 text-[#ff3b30]" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-[#1d1d1f] truncate">{item.title}</p>
-                <p className="text-[12px] text-[#6e6e73] truncate">{item.sub}</p>
+                <p className="text-[13px] font-medium text-[#1d1d1f] truncate">{txn.description || (txn.type === "credit" ? "Wallet Recharge" : "Usage Debit")}</p>
+                <p className="text-[11px] text-[#6e6e73]">{timeAgo(txn.created_at)}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {STATUS_ICON[item.status]}
-                <span className="text-[11px] text-[#6e6e73]">{item.time}</span>
+                <p className={`text-[14px] font-semibold ${txn.type === "credit" ? "text-[#34c759]" : "text-[#ff3b30]"}`}>
+                  {txn.type === "credit" ? "+" : "−"}₹{Number(txn.amount).toLocaleString("en-IN")}
+                </p>
+                {txn.status === "success"
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-[#34c759]" />
+                  : txn.status === "failed"
+                  ? <XCircle className="w-3.5 h-3.5 text-[#ff3b30]" />
+                  : <AlertCircle className="w-3.5 h-3.5 text-[#ff9500]" />}
               </div>
             </div>
           ))}
