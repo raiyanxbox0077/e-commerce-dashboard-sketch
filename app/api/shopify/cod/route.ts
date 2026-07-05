@@ -7,10 +7,10 @@ export async function GET(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Get client's own Supabase credentials
+  // Select all tenant fields — fall back gracefully if newer columns don't exist yet
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('client_supabase_url, client_supabase_anon_key, cod_table_name, cart_table_name')
+    .select('*')
     .eq('user_id', user.id)
     .single()
 

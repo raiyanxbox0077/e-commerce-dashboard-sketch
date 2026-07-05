@@ -43,6 +43,14 @@ export async function GET(req: Request) {
   //   call_duration_seconds, dograh_token_usage, phone_number, recording_url, transcript_url
   const runsRaw: Record<string, unknown>[] = Array.isArray(raw) ? raw : (raw?.runs ?? [])
 
+  // Ensure a URL is absolute — prepend baseUrl if it's a relative path
+  function abs(url: unknown): string | null {
+    if (!url) return null
+    const s = String(url)
+    if (s.startsWith('http://') || s.startsWith('https://')) return s
+    return `${baseUrl}${s.startsWith('/') ? '' : '/'}${s}`
+  }
+
   // Normalise field names to match what the UI expects
   const runs = runsRaw.map(r => ({
     run_id: String(r.id ?? r.run_id ?? ''),
@@ -54,9 +62,9 @@ export async function GET(req: Request) {
     duration: r.call_duration_seconds ?? r.duration ?? 0,
     cost: r.dograh_token_usage ?? r.cost ?? 0,
     created_at: r.created_at ?? null,
-    recording_url: r.recording_public_url ?? r.recording_url ?? null,
-    transcript_url: r.transcript_public_url ?? r.transcript_url ?? null,
-    bot_recording_url: r.bot_recording_public_url ?? r.bot_recording_url ?? null,
+    recording_url: abs(r.recording_public_url ?? r.recording_url),
+    transcript_url: abs(r.transcript_public_url ?? r.transcript_url),
+    bot_recording_url: abs(r.bot_recording_public_url ?? r.bot_recording_url),
   }))
 
   return NextResponse.json({

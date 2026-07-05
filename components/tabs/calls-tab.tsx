@@ -154,13 +154,13 @@ function RunDetailPanel({
   onClose,
 }: { run: Run; workflowId: string; onClose: () => void }) {
   const { data: detail, isLoading } = useSWR(
-    run.run_id && workflowId
-      ? `/api/calls/${run.run_id}?workflow_id=${workflowId}`
-      : null,
+    run.run_id ? `/api/calls/${run.run_id}` : null,
     fetcher
   )
 
-  const d: Run = { ...run, ...(detail ?? {}) }
+  // Merge detail over list run — if detail fetch failed, keep list data
+  const detailOk = detail && !detail.error
+  const d: Run = { ...run, ...(detailOk ? detail : {}) }
   const S = STATUS_CONFIG[d.status] ?? STATUS_CONFIG.failed
   const SIcon = S.icon
 
@@ -413,9 +413,9 @@ export function CallsTab() {
               onChange={e => { setSelectedWorkflowId(e.target.value); setPage(1) }}
               className="bg-transparent text-[13px] text-[#1d1d1f] outline-none w-full appearance-none cursor-pointer"
             >
-              <option value="">All workflows</option>
-              {workflows.map(w => (
-                <option key={w.workflow_id} value={w.workflow_id}>
+              <option key="__all__" value="">All workflows</option>
+              {workflows.map((w, i) => (
+                <option key={w.workflow_id ?? i} value={w.workflow_id}>
                   {w.name || w.workflow_id}
                 </option>
               ))}

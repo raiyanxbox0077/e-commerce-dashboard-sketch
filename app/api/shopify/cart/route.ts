@@ -7,9 +7,10 @@ export async function GET(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Select all so newer columns (cart_table_name etc.) work without a schema migration error
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('client_supabase_url, client_supabase_anon_key, cart_table_name')
+    .select('*')
     .eq('user_id', user.id)
     .single()
 

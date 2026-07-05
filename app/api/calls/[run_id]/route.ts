@@ -20,18 +20,26 @@ export async function GET(
   const baseUrl = (tenant?.voice_base_url ?? 'https://voice.larynxai.in').replace(/\/$/, '')
   if (!apiKey) return NextResponse.json({ error: 'Voice API key not configured.' }, { status: 400 })
 
-  const { searchParams } = new URL(req.url)
-  const workflowId = searchParams.get('workflow_id')
+  // Ensure a URL is absolute — prepend baseUrl if relative
+  function abs(url: unknown): string | null {
+    if (!url) return null
+    const s = String(url)
+    if (s.startsWith('http://') || s.startsWith('https://')) return s
+    return `${baseUrl}${s.startsWith('/') ? '' : '/'}${s}`
+  }
 
-  // If we have a workflow_id, use the scoped endpoint; otherwise fall back to org-wide run lookup
-  const endpoint = workflowId
-    ? `${baseUrl}/api/v1/workflow/${workflowId}/runs/${run_id}`
-    : `${baseUrl}/api/v1/runs/${run_id}`
-
+  // LarynxAI/Dograh single run endpoint
+  const endpoint = `${baseUrl}/api/v1/runs/${run_id}`
   const res = await fetch(endpoint, { headers: { 'X-API-Key': apiKey } })
+
+  if (!res.ok) {
+    // Endpoint not found or error — return what we already have from the list
+    return NextResponse.json({ error: `Run detail fetch failed: ${res.status}` }, { status: res.status })
+  }
+
   const raw = await res.json()
 
-  // Normalise response fields
+  // Normalise response fields, ensuring all media URLs are absolute
   const detail = {
     run_id: String(raw.id ?? run_id),
     workflow_id: raw.workflow_id,
@@ -43,14 +51,14 @@ export async function GET(
     duration: raw.call_duration_seconds ?? raw.duration ?? 0,
     cost: raw.dograh_token_usage ?? raw.cost ?? 0,
     created_at: raw.created_at ?? null,
-    recording_url: raw.recording_url ?? raw.recording_public_url ?? null,
-    user_recording_url: raw.user_recording_url ?? raw.user_recording_public_url ?? null,
-    bot_recording_url: raw.bot_recording_url ?? raw.bot_recording_public_url ?? null,
-    transcript_url: raw.transcript_url ?? raw.transcript_public_url ?? null,
+    recording_url: abs(raw.recording_url ?? raw.recording_public_url),
+    user_recording_url: abs(raw.user_recording_url ?? raw.user_recording_public_url),
+    bot_recording_url: abs(raw.bot_recording_url ?? raw.bot_recording_public_url),
+    transcript_url: abs(raw.transcript_url ?? raw.transcript_public_url),
     gathered_context: raw.gathered_context ?? null,
     initial_context: raw.initial_context ?? null,
     summary: raw.summary ?? null,
   }
 
-  return NextResponse.json(detail, { status: res.status })
+  return NextResponse.json(detail, { status: 200 })
 }

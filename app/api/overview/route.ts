@@ -6,10 +6,10 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Get tenant config (client supabase creds)
+  // Get all tenant config — use * so missing columns don't cause 400
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('client_supabase_url, client_supabase_anon_key, wallet_balance, voice_api_key, voice_base_url')
+    .select('*')
     .eq('user_id', user.id)
     .single()
 
@@ -40,9 +40,11 @@ export async function GET() {
       if (dashboardMatch) supabaseUrl = `https://${dashboardMatch[1]}.supabase.co`
       const clientDb = createClientDynamic(supabaseUrl, tenant.client_supabase_anon_key)
 
+      const codTable = (tenant as Record<string, unknown>).cod_table_name as string || 'cod_confirmation'
+      const cartTable = (tenant as Record<string, unknown>).cart_table_name as string || 'E-commerce add to cart'
       const [{ count: cod }, { count: cart }] = await Promise.all([
-        clientDb.from('cod_confirmation').select('*', { count: 'exact', head: true }),
-        clientDb.from('E-commerce add to cart').select('*', { count: 'exact', head: true }),
+        clientDb.from(codTable).select('*', { count: 'exact', head: true }),
+        clientDb.from(cartTable).select('*', { count: 'exact', head: true }),
       ])
       codCount = cod ?? 0
       cartCount = cart ?? 0
