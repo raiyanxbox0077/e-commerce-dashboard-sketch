@@ -266,6 +266,7 @@ export function ProfileTab() {
   const [botsailorKey, setBotsailorKey] = useState("")
   const [botsailorPhoneId, setBotsailorPhoneId] = useState("")
   const [shopifyDomain, setShopifyDomain] = useState("")
+  const [shopifyAdminToken, setShopifyAdminToken] = useState("")
   const [clientSupabaseUrl, setClientSupabaseUrl] = useState("")
   const [clientSupabaseKey, setClientSupabaseKey] = useState("")
   const [codTableName, setCodTableName] = useState("")
@@ -301,6 +302,7 @@ export function ProfileTab() {
     setBotsailorKey(tenant.botsailor_api_key ?? "")
     setBotsailorPhoneId(tenant.botsailor_phone_id ?? "")
     setShopifyDomain(tenant.shopify_store_domain ?? "")
+    setShopifyAdminToken(tenant.shopify_admin_token ?? "")
     setClientSupabaseUrl(tenant.client_supabase_url ?? "")
     setClientSupabaseKey(tenant.client_supabase_anon_key ?? "")
     setCodTableName(tenant.cod_table_name ?? "")
@@ -495,7 +497,44 @@ export function ProfileTab() {
                 </div>
               </div>
 
-              {/* Shopify / Order Tables */}
+              {/* Shopify */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-md bg-[#95bf47]/20 flex items-center justify-center">
+                    <Building2 className="w-3.5 h-3.5 text-[#5a8a00]" />
+                  </div>
+                  <p className="text-[14px] font-semibold text-[#1d1d1f]">Shopify</p>
+                  <span className={cn("ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full",
+                    (shopifyDomain && shopifyAdminToken) ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
+                  )}>
+                    {(shopifyDomain && shopifyAdminToken) ? "Connected" : "Not set"}
+                  </span>
+                </div>
+                <p className="text-[12px] text-[#6e6e73] mb-3">
+                  Connect your Shopify store to track WhatsApp-attributed revenue (orders with <code className="font-mono bg-[#f5f5f7] px-1 rounded">WA-</code> discount codes) directly on the dashboard.
+                </p>
+                <TextField
+                  label="Store Domain"
+                  value={shopifyDomain}
+                  onChange={setShopifyDomain}
+                  hint="e.g. your-store.myshopify.com"
+                />
+                <SecretField
+                  label="Admin API Token"
+                  value={shopifyAdminToken}
+                  onChange={setShopifyAdminToken}
+                  hint="shpat_xxxxxxxxxxxxxxxxxxxxxxxx — Settings › Apps › Private apps"
+                />
+                <p className="text-[11px] text-[#6e6e73] mt-1.5">
+                  Webhook URL for real-time order attribution:{" "}
+                  <code className="font-mono bg-[#f5f5f7] px-1 rounded break-all">
+                    {typeof window !== "undefined" ? `${window.location.origin}/api/shopify/webhook` : "/api/shopify/webhook"}
+                  </code>
+                  {" "}— register this in Shopify under <strong>Settings › Notifications › Webhooks</strong> for the <em>Order payment</em> event.
+                </p>
+              </div>
+
+              {/* Order Tables */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-6 h-6 rounded-md bg-[#95bf47]/20 flex items-center justify-center">
@@ -589,6 +628,7 @@ export function ProfileTab() {
                 botsailor_api_key: botsailorKey,
                 botsailor_phone_id: botsailorPhoneId,
                 shopify_store_domain: shopifyDomain,
+                shopify_admin_token: shopifyAdminToken,
                 cod_table_name: codTableName,
                 cart_table_name: cartTableName,
                 support_table_name: supportTableName,

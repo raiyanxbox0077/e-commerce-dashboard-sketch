@@ -6,7 +6,7 @@ import {
   PhoneCall, ShoppingBag, TrendingUp, TrendingDown,
   CheckCircle2, XCircle, AlertCircle, Wallet,
   ArrowUpRight, ArrowDownLeft, IndianRupee, BadgeIndianRupee,
-  Zap, ShieldCheck,
+  Zap, ShieldCheck, Store,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -22,6 +22,14 @@ interface RevenueData {
   cart_converted_count: number
   cost_per_minute: number
   total_call_minutes: number
+}
+
+interface ShopifyRevenueData {
+  configured: boolean
+  wa_revenue: number
+  order_count: number
+  avg_order_value: number
+  monthly?: { month: string; revenue: number }[]
 }
 
 interface OverviewData {
@@ -186,6 +194,7 @@ function FunnelBar({ label, value, max, color, delay = 0 }: FunnelBarProps) {
 export function OverviewTab() {
   const { data, isLoading } = useSWR<OverviewData>("/api/overview", fetcher, { refreshInterval: 30000 })
   const { data: walletData } = useSWR<{ balance: number; transactions: WalletTransaction[] }>("/api/wallet", fetcher)
+  const { data: shopifyRevData } = useSWR<ShopifyRevenueData>("/api/shopify/revenue", fetcher, { refreshInterval: 300000 })
 
   const fmtRs = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
   const fmtRsDecimal = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -203,13 +212,17 @@ export function OverviewTab() {
   const callSavings   = rev?.call_cost_savings ?? 0
   const totalNet      = rev?.total_net        ?? 0
 
+  const waRevenue     = shopifyRevData?.wa_revenue      ?? 0
+  const waOrderCount  = shopifyRevData?.order_count     ?? 0
+  const waConfigured  = shopifyRevData?.configured      ?? false
+
   const recentTransactions = (walletData?.transactions ?? []).slice(0, 6)
 
   return (
     <div className="space-y-5">
 
-      {/* ── Top KPI row — 6 cards ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      {/* ── Top KPI row — 7 cards ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-3">
         <KpiCard
           label="Total Calls" rawValue={callTotal}
           sub="Dograh workflows"
@@ -246,6 +259,18 @@ export function OverviewTab() {
           sub="Made + Saved"
           icon={IndianRupee} iconColor="text-[#0066cc]" iconBg="bg-[#0066cc]/10"
           accentColor="#0066cc" delay={300} isLoading={isLoading}
+          formatValue={fmtRs}
+        />
+        <KpiCard
+          label="WA Revenue"
+          rawValue={waRevenue}
+          sub={waConfigured ? `${waOrderCount} orders via WA-` : "Connect Shopify"}
+          icon={Store}
+          iconColor="text-[#5a8a00]"
+          iconBg="bg-[#95bf47]/15"
+          accentColor="#5a8a00"
+          delay={360}
+          isLoading={isLoading}
           formatValue={fmtRs}
         />
       </div>
@@ -326,6 +351,65 @@ export function OverviewTab() {
           })}
         </div>
       </div>
+
+      {/* ── Shopify WA Revenue strip (only shown when configured) ───────────── */}
+      {waConfigured && (
+        <div
+          className="anim-fade-slide bg-white rounded-2xl hairline p-5"
+          style={{ animationDelay: "390ms" }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Store className="w-4 h-4 text-[#5a8a00]" />
+            <p className="text-[14px] font-semibold text-[#1d1d1f]">WhatsApp → Shopify Revenue</p>
+            <span className="ml-auto text-[11px] font-medium bg-[#95bf47]/10 text-[#5a8a00] px-2 py-0.5 rounded-full">
+              WA- discount codes
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-[#FAFAF8] rounded-xl p-4">
+              <p className="text-[11px] text-[#6e6e73] mb-1">Total Revenue</p>
+              <p className="text-[20px] font-semibold text-[#1d1d1f]">{fmtRs(waRevenue)}</p>
+              <p className="text-[11px] text-[#6e6e73] mt-1">from WA-attributed orders</p>
+            </div>
+            <div className="bg-[#FAFAF8] rounded-xl p-4">
+              <p className="text-[11px] text-[#6e6e73] mb-1">Orders</p>
+              <p className="text-[20px] font-semibold text-[#1d1d1f]">{waOrderCount}</p>
+              <p className="text-[11px] text-[#6e6e73] mt-1">paid orders via WhatsApp</p>
+            </div>
+            <div className="bg-[#FAFAF8] rounded-xl p-4">
+              <p className="text-[11px] text-[#6e6e73] mb-1">Avg Order Value</p>
+              <p className="text-[20px] font-semibold text-[#1d1d1f]">{fmtRs(shopifyRevData?.avg_order_value ?? 0)}</p>
+              <p className="text-[11px] text-[#6e6e73] mt-1">per WA-attributed order</p>
+            </div>
+          </div>
+          {(shopifyRevData?.monthly?.length ?? 0) > 0 && (
+            <div className="mt-4">
+              <p className="text-[12px] text-[#6e6e73] mb-2">Monthly trend</p>
+              <div className="flex items-end gap-1.5 h-16">
+                {(() => {
+                  const months = shopifyRevData!.monthly!
+                  const maxVal = Math.max(...months.map(m => m.revenue), 1)
+                  return months.map(m => (
+                    <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className="w-full rounded-t bg-[#95bf47]/70 min-h-[4px]"
+                        style={{ height: `${Math.max(4, (m.revenue / maxVal) * 52)}px` }}
+                        title={`${m.month}: ${fmtRs(m.revenue)}`}
+                      />
+                      <p className="text-[9px] text-[#aeaeb2]">{m.month.slice(5)}</p>
+                    </div>
+                  ))
+                })()}
+              </div>
+            </div>
+          )}
+          {!waConfigured && (
+            <p className="text-[12px] text-[#6e6e73] mt-2">
+              Add your Shopify store domain and admin token in <strong>Settings → Integrations</strong> to enable this panel.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Middle row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

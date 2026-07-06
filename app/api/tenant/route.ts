@@ -65,7 +65,7 @@ export async function PATCH(req: Request) {
 
   // Columns that may not exist yet in older deployments — silently drop them if Postgres
   // returns a "column does not exist" error, then retry without those columns.
-  const newColumns = ['support_table_name', 'review_table_name', 'voice_workflow_id']
+  const newColumns = ['support_table_name', 'review_table_name', 'voice_workflow_id', 'shopify_admin_token']
 
   let payload = { ...updates, updated_at: new Date().toISOString() }
   let { data, error } = await supabase
