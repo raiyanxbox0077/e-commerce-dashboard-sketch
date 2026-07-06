@@ -88,7 +88,8 @@ export function WhatsAppTab() {
   const chats: BotSailorChat[] = Array.isArray(rawChats) ? rawChats : []
   const rawContacts = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers
   const contacts: BotSailorContact[] = Array.isArray(rawContacts) ? rawContacts : []
-  const rawMessages = messagesData?.message ?? messagesData?.data ?? messagesData?.messages
+  // Route now returns { messages: [...] } — normalised array, no more numeric-keyed object
+  const rawMessages = messagesData?.messages ?? messagesData?.data ?? messagesData?.message
   const messages: Message[] = Array.isArray(rawMessages) ? rawMessages : []
   // Error from BotSailor comes as message string when status != "1"
   const waError = (chatsData?.status === "0" || contactsData?.status === "0")
@@ -325,7 +326,8 @@ export function WhatsAppTab() {
               ) : messages.map((msg, i) => {
                 // BotSailor: sender is "subscriber" (customer) or "bot"/"agent"
                 const rawMsg = msg as Record<string, unknown>
-                const isUser = rawMsg.sender === "subscriber" || msg.sender_type === "subscriber" || msg.direction === "incoming"
+                // BotSailor: sender="user" means the customer, "bot"/"agent" means outbound
+                const isUser = rawMsg.sender === "user" || rawMsg.sender === "subscriber" || msg.sender_type === "user" || msg.sender_type === "subscriber" || msg.direction === "incoming"
                 // message_content is a JSON string in BotSailor conversations
                 let text = msg.message ?? msg.text ?? ""
                 if (!text && rawMsg.message_content) {

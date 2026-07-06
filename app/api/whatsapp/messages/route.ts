@@ -43,7 +43,60 @@ export async function GET(req: Request) {
     )
   }
 
-  return NextResponse.json(data, { status: res.status })
+  // BotSailor returns message as a JSON string of a numeric-keyed object e.g. {"18":{...},"19":{...}}
+  // Parse it and normalise into a clean array for the UI
+  let rawMessage = data?.message ?? null
+  let messagesArray: Record<string, unknown>[] = []
+
+  if (typeof rawMessage === 'string') {
+    try { rawMessage = JSON.parse(rawMessage) } catch { /* not JSON */ }
+  }
+
+  if (rawMessage && typeof rawMessage === 'object' && !Array.isArray(rawMessage)) {
+    // Numeric-keyed object — convert to array sorted by key
+    messagesArray = Object.entries(rawMessage as Record<string, unknown>)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, v]) => v as Record<string, unknown>)
+  } else if (Array.isArray(rawMessage)) {
+    messagesArray = rawMessage
+  }
+
+  // Extract readable text from nested message_content (raw WhatsApp webhook JSON string)
+  const normalised = messagesArray.map(msg => {
+    let text = (msg.message as string) ?? ''
+
+    if (!text && msg.message_content) {
+      let mc = msg.message_content
+      if (typeof mc === 'string') {
+        try { mc = JSON.parse(mc) } catch { /* keep as string */ }
+      }
+      if (mc && typeof mc === 'object') {
+        // Walk the WhatsApp webhook structure to find the message body
+        const entry = (mc as Record<string, unknown>)
+        const changes = (entry?.entry as Record<string, unknown>[])?.[0]?.changes as Record<string, unknown>[] | undefined
+        const value = changes?.[0]?.value as Record<string, unknown> | undefined
+        const waMsg = (value?.messages as Record<string, unknown>[])?.[0] as Record<string, unknown> | undefined
+        text = (waMsg?.text as Record<string, unknown>)?.body as string
+          ?? (waMsg?.button as Record<string, unknown>)?.text as string
+          ?? (waMsg?.interactive as Record<string, unknown>)?.body as string
+          ?? (mc as Record<string, unknown>)?.text?.toString()
+          ?? ''
+      } else if (typeof mc === 'string') {
+        text = mc
+      }
+    }
+
+    return {
+      id: msg.id,
+      sender: msg.sender,           // "user" | "bot" | "agent"
+      sender_type: msg.sender,
+      message: text,
+      created_at: msg.conversation_time ?? msg.created_at,
+      status: msg.status,
+    }
+  })
+
+  return NextResponse.json({ status: '1', messages: normalised })
 }
 
 export async function POST(req: Request) {
