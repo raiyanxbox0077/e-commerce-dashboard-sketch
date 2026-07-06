@@ -1,7 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
+  // Auth check via session client
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,7 +20,9 @@ export async function GET(req: Request) {
   const search = searchParams.get('search') ?? ''
   const status = searchParams.get('status') ?? ''
 
-  // Use tenant-configured table name or the exact table name from this project
+  // Use admin client to bypass RLS on COD/cart tables (they have no user-scoped RLS)
+  const admin = createAdminClient()
+
   const tableNames = [
     ...(tenant?.cod_table_name ? [tenant.cod_table_name] : []),
     'E-commerce COD confimation',
@@ -28,7 +31,7 @@ export async function GET(req: Request) {
   let data = null, error = null, count = null
 
   for (const tableName of tableNames) {
-    let q = supabase
+    let q = admin
       .from(tableName)
       .select('*', { count: 'exact' })
       .order('order_date', { ascending: false })

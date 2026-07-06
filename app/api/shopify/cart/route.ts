@@ -1,7 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
+  // Auth check via session client
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,9 +18,12 @@ export async function GET(req: Request) {
   const limit = parseInt(searchParams.get('limit') ?? '20')
   const search = searchParams.get('search') ?? ''
 
-  const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'  // exact table name in your Supabase
+  const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'
 
-  let query = supabase
+  // Use admin client to bypass RLS on cart table (no user-scoped RLS on this table)
+  const admin = createAdminClient()
+
+  let query = admin
     .from(cartTable)
     .select('*', { count: 'exact' })
     .order('order_date', { ascending: false })
