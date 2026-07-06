@@ -18,9 +18,9 @@ export async function GET(req: Request) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '20')
   const search = searchParams.get('search') ?? ''
-  const status = searchParams.get('status') ?? ''
+  // order_confirm: 'true' | 'false' | 'pending' (null) — maps to the "order confirm" column
+  const orderConfirm = searchParams.get('order_confirm') ?? ''
 
-  // Use admin client to bypass RLS on COD/cart tables (they have no user-scoped RLS)
   const admin = createAdminClient()
 
   const tableNames = [
@@ -36,8 +36,14 @@ export async function GET(req: Request) {
       .select('*', { count: 'exact' })
       .order('order_date', { ascending: false })
       .range((page - 1) * limit, page * limit - 1)
+
     if (search) q = q.ilike('customer_name', `%${search}%`)
-    if (status) q = q.eq('status', status)
+
+    // Filter on "order confirm" column
+    if (orderConfirm === 'true')    q = q.eq('order confirm', 'true')
+    else if (orderConfirm === 'false') q = q.eq('order confirm', 'false')
+    else if (orderConfirm === 'pending') q = q.is('order confirm', null)
+
     const result = await q
     if (!result.error) {
       data = result.data; count = result.count; error = null; break

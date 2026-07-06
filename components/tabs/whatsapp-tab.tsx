@@ -88,28 +88,35 @@ export function WhatsAppTab() {
     fetcher, { refreshInterval: 8000 }
   )
 
-  // BotSailor returns { status: "1", message: [...] } — message can be a string on error, guard with isArray
-  const rawChats = chatsData?.message ?? chatsData?.data ?? chatsData?.chats
-  const newChats: BotSailorChat[] = Array.isArray(rawChats) ? rawChats : []
-
-  // Accumulate chats across pages
+  // BotSailor returns { status: "1", message: [...] } — message can be string on error
+  // Accumulate pages into allChats as each page loads
   useEffect(() => {
-    if (!newChats.length) {
-      if (chatPage > 1) setHasMoreChats(false)
+    if (!chatsData) return
+    const raw = chatsData?.message ?? chatsData?.data ?? chatsData?.chats
+    const incoming: BotSailorChat[] = Array.isArray(raw) ? raw : []
+
+    if (incoming.length === 0) {
+      // No results from this page — no more to load
+      setHasMoreChats(false)
       return
     }
+
     if (chatPage === 1) {
-      setAllChats(newChats)
+      setAllChats(incoming)
     } else {
       setAllChats(prev => {
-        const existingIds = new Set(prev.map(c => c.subscriber_id ?? c.id))
-        const fresh = newChats.filter(c => !existingIds.has(c.subscriber_id ?? c.id))
+        const existingIds = new Set(prev.map(c => String(c.subscriber_id ?? c.id)))
+        const fresh = incoming.filter(c => !existingIds.has(String(c.subscriber_id ?? c.id)))
         return [...prev, ...fresh]
       })
     }
-    if (newChats.length < CHATS_PER_PAGE) setHasMoreChats(false)
+
+    if (incoming.length < CHATS_PER_PAGE) {
+      setHasMoreChats(false)
+    }
+  // chatsData identity changes each time a new page loads
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatsData, chatPage])
+  }, [chatsData])
 
   // Reset when switching sub-tabs or search changes
   useEffect(() => {
@@ -131,16 +138,18 @@ export function WhatsAppTab() {
     return () => obs.disconnect()
   }, [hasMoreChats, chatsLoading])
 
+  // Use allChats (accumulated) as the source of truth — never raw chatsData directly
   const chats = allChats
   const rawContacts = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers
   const contacts: BotSailorContact[] = Array.isArray(rawContacts) ? rawContacts : []
-  // Route now returns { messages: [...] } — normalised array, no more numeric-keyed object
   const rawMessages = messagesData?.messages ?? messagesData?.data ?? messagesData?.message
   const messages: Message[] = Array.isArray(rawMessages) ? rawMessages : []
-  // Error from BotSailor comes as message string when status != "1"
-  const waError = (chatsData?.status === "0" || contactsData?.status === "0")
-    ? (typeof chatsData?.message === "string" ? chatsData.message : typeof contactsData?.message === "string" ? contactsData.message : null)
-    : chatsData?.error ?? contactsData?.error ?? null
+  // Show error only when allChats is still empty after loading — not during pagination
+  const waError = allChats.length === 0
+    ? (chatsData?.error
+        ?? (typeof chatsData?.message === "string" ? chatsData.message : null)
+        ?? (contactsData?.error ?? (typeof contactsData?.message === "string" ? contactsData.message : null)))
+    : null
 
   const filteredChats = search
     ? chats.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(search.toLowerCase()) || (c.phone ?? "").includes(search))

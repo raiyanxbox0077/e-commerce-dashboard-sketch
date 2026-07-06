@@ -682,15 +682,18 @@ export function ShopifyTab() {
   const [selectedSupport, setSelectedSupport] = useState<SupportTicket | null>(null)
   const [selectedReview, setSelectedReview]   = useState<Review | null>(null)
 
-  // Build COD query — status filter maps to "order confirm" values
+  // COD: filter by "order confirm" column — confirmed=true, rejected=false, pending=null
   const codStatusParam = codStatusFilter === "confirmed" ? "&order_confirm=true"
-    : codStatusFilter === "rejected" ? "&order_confirm=false"
-    : codStatusFilter === "pending"  ? "&order_confirm=pending"
+    : codStatusFilter === "rejected"  ? "&order_confirm=false"
+    : codStatusFilter === "pending"   ? "&order_confirm=pending"
     : ""
-  const cartStatusParam = cartStatusFilter !== "all" ? `&call_status=${encodeURIComponent(cartStatusFilter)}` : ""
+  // Cart: confirmed = both COMPLETED + completed, pending = null call status
+  const cartStatusParam = cartStatusFilter === "confirmed" ? "&call_status=confirmed"
+    : cartStatusFilter === "pending" ? "&call_status=pending"
+    : ""
 
   const { data: codData,     isLoading: codLoading }     = useSWR(subTab === "cod"     ? `/api/shopify/cod?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}${codStatusParam}` : null, fetcher, { keepPreviousData: true })
-  const { data: cartData,    isLoading: cartLoading }    = useSWR(subTab === "cart"    ? `/api/shopify/cart?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
+  const { data: cartData,    isLoading: cartLoading }    = useSWR(subTab === "cart"    ? `/api/shopify/cart?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}${cartStatusParam}` : null, fetcher, { keepPreviousData: true })
   const { data: supportData, isLoading: supportLoading } = useSWR(subTab === "support" ? `/api/support?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
   const { data: reviewData,  isLoading: reviewLoading }  = useSWR(subTab === "reviews" ? `/api/reviews?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
 
@@ -773,26 +776,22 @@ export function ShopifyTab() {
         {/* Cart status filter pills */}
         {subTab === "cart" && (
           <div className="flex items-center gap-1 flex-wrap">
-            {(["all", "COMPLETED", "completed", "IN_PROGRESS"] as const).map(s => {
-              const label = s === "all" ? "All" : s === "COMPLETED" || s === "completed" ? "Completed" : "In Progress"
-              const isActive = s === "all" ? cartStatusFilter === "all" : cartStatusFilter === s
-              return (
-                <button
-                  key={s}
-                  onClick={() => { setCartStatusFilter(s); setPage(1) }}
-                  className={cn(
-                    "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors",
-                    isActive
-                      ? s === "all" ? "bg-[#1d1d1f] text-white"
-                        : s.toLowerCase().includes("progress") ? "bg-[#0066cc] text-white"
-                        : "bg-[#34c759] text-white"
-                      : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
-                  )}
-                >
-                  {label}
-                </button>
-              )
-            })}
+            {(["all", "confirmed", "pending"] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => { setCartStatusFilter(s); setPage(1) }}
+                className={cn(
+                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
+                  cartStatusFilter === s
+                    ? s === "confirmed" ? "bg-[#34c759] text-white"
+                      : s === "pending"  ? "bg-[#ff9500] text-white"
+                      : "bg-[#1d1d1f] text-white"
+                    : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
+                )}
+              >
+                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
           </div>
         )}
 
