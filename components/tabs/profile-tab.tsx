@@ -10,10 +10,8 @@ type ProfileSection = "account" | "integrations" | "security" | "notifications"
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 // ─── WorkflowPicker ───────────────────────────────────────────────────────────
-// Fetches available workflows from the API and lets the user pick by name.
-// Stores numeric IDs (e.g. "26") in state, displayed with workflow names.
-// Dograh workflows use "workflow_id" as the id field
-interface AvailableWorkflow { workflow_id: number | string; name: string; status?: string; total_runs?: number }
+// Dograh workflow objects: { id, name, status, total_runs }  ← uses "id" not "workflow_id"
+interface AvailableWorkflow { id: number; name: string; status?: string; total_runs?: number }
 
 function WorkflowPicker({
   apiKey,
@@ -30,26 +28,16 @@ function WorkflowPicker({
   )
   const available: AvailableWorkflow[] = data?.workflows ?? []
 
-  // Resolve any saved value (may be a name from before) to its numeric workflow_id string
-  function resolveId(val: string): string {
-    if (!val) return ""
-    const trimmed = val.trim()
-    const byId = available.find(w => String(w.workflow_id) === trimmed)
-    if (byId) return String(byId.workflow_id)
-    const byName = available.find(w => w.name.toLowerCase() === trimmed.toLowerCase())
-    if (byName) return String(byName.workflow_id)
-    return trimmed
-  }
-
-  const resolvedIds = selectedIds.map(resolveId)
-  const addableWorkflows = available.filter(w => !resolvedIds.includes(String(w.workflow_id)))
+  // Workflows not yet in the selected list
+  const addableWorkflows = available.filter(w => !selectedIds.includes(String(w.id)))
 
   function removeAt(idx: number) {
     onChange(selectedIds.filter((_, i) => i !== idx))
   }
 
   function addWorkflow(id: string) {
-    if (id && !resolvedIds.includes(id)) onChange([...selectedIds.filter(Boolean), id])
+    if (!id || selectedIds.includes(id)) return
+    onChange([...selectedIds, id])
   }
 
   return (
@@ -58,7 +46,7 @@ function WorkflowPicker({
         <div>
           <p className="text-[13px] font-medium text-[#1d1d1f]">Workflows</p>
           <p className="text-[11px] text-[#6e6e73] mt-0.5">
-            Select workflows — runs from all selected workflows appear in the Calls tab.
+            Select one or more workflows — only runs from these will appear in the Calls tab.
           </p>
         </div>
         <div className="space-y-2">
@@ -69,19 +57,20 @@ function WorkflowPicker({
           )}
 
           {/* Selected workflow chips */}
-          {resolvedIds.filter(Boolean).map((wfId, idx) => {
-            const wf = available.find(w => String(w.workflow_id) === wfId)
+          {selectedIds.filter(Boolean).map((wfId, idx) => {
+            const wf = available.find(w => String(w.id) === wfId)
             return (
-              <div key={idx} className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 min-w-0">
+              <div key={wfId} className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-[#1d1d1f] truncate">
-                    {wf ? wf.name : `ID: ${wfId}`}
+                    {wf ? wf.name : `Workflow ID: ${wfId}`}
                   </p>
                   <p className="text-[11px] font-mono text-[#6e6e73]">
-                    workflow_id: {wfId}{wf ? ` · ${wf.total_runs ?? 0} runs` : ""}
+                    ID: {wfId}{wf ? ` · ${wf.total_runs ?? 0} runs` : ""}
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => removeAt(idx)}
                   className="p-1.5 rounded-lg hover:bg-[#ff3b30]/10 text-[#6e6e73] hover:text-[#ff3b30] transition-colors shrink-0"
                 >
@@ -91,18 +80,22 @@ function WorkflowPicker({
             )
           })}
 
-          {/* Add workflow dropdown — constrained width, no overflow */}
+          {/* Add workflow dropdown */}
           {!isLoading && addableWorkflows.length > 0 && (
             <div className="relative w-full">
               <select
                 value=""
-                onChange={e => { addWorkflow(e.target.value); (e.target as HTMLSelectElement).value = "" }}
-                className="w-full max-w-full bg-[#f5f5f7] rounded-xl pl-3.5 pr-8 py-2.5 text-[13px] text-[#1d1d1f] outline-none border border-transparent focus:border-[#0066cc]/30 appearance-none cursor-pointer truncate"
+                onChange={e => {
+                  const val = e.target.value
+                  if (val) addWorkflow(val)
+                  e.target.value = ""
+                }}
+                className="w-full bg-[#f5f5f7] rounded-xl pl-3.5 pr-8 py-2.5 text-[13px] text-[#1d1d1f] outline-none border border-transparent focus:border-[#0066cc]/30 appearance-none cursor-pointer"
               >
-                <option value="" disabled>+ Add a workflow…</option>
+                <option value="">+ Add a workflow…</option>
                 {addableWorkflows.map(w => (
-                  <option key={String(w.workflow_id)} value={String(w.workflow_id)}>
-                    {w.name} (ID: {w.workflow_id})
+                  <option key={w.id} value={String(w.id)}>
+                    {w.name} ({w.total_runs ?? 0} runs · ID: {w.id})
                   </option>
                 ))}
               </select>
