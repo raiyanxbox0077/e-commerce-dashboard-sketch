@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -12,43 +12,99 @@ export async function GET() {
     .eq('user_id', user.id)
     .single()
 
-  // Wallet transactions this month
-  const startOfMonth = new Date()
-  startOfMonth.setDate(1)
-  startOfMonth.setHours(0, 0, 0, 0)
+  // Wallet balance direct from tenants row (no wallet_transactions table)
+  const walletBalance = tenant?.wallet_balance ?? 0
+  const walletTxns: { type: string; amount: number }[] = tenant?.wallet_transactions ?? []
+  const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0)
+  const monthTxns = walletTxns.filter((t: { type: string; amount: number; created_at?: string }) => t.created_at && new Date(t.created_at) >= startOfMonth)
+  const spent = monthTxns.filter((t: { type: string }) => t.type === 'debit').reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0)
+  const credited = monthTxns.filter((t: { type: string }) => t.type === 'credit').reduce((s: number, t: { amount: number }) => s + Number(t.amount), 0)
 
-  const { data: txns } = await supabase
-    .from('wallet_transactions')
-    .select('type, amount')
-    .eq('user_id', user.id)
-    .gte('created_at', startOfMonth.toISOString())
+  const admin = createAdminClient()
 
-  const spent = txns?.filter(t => t.type === 'debit').reduce((s, t) => s + Number(t.amount), 0) ?? 0
-  const credited = txns?.filter(t => t.type === 'credit').reduce((s, t) => s + Number(t.amount), 0) ?? 0
+  // ── Table names ────────────────────────────────────────────────────────────
+  const codTable  = tenant?.cod_table_name  || 'E-commerce COD confimation'
+  const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'
 
-  // COD + Cart counts from same Supabase DB
+  // ── COD data ───────────────────────────────────────────────────────────────
   let codCount = 0
-  let cartCount = 0
+  let revenueSaved = 0      // sum of shipping_charge on rejected/cancelled COD orders
+  let codRejectedCount = 0
 
   try {
-    const codTable = tenant?.cod_table_name || 'E-commerce COD confimation'
-    const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'
-    const [codRes, cartRes] = await Promise.all([
-      supabase.from(codTable).select('*', { count: 'exact', head: true }),
-      supabase.from(cartTable).select('*', { count: 'exact', head: true }),
-    ])
-    codCount = codRes.count ?? 0
-    cartCount = cartRes.count ?? 0
-  } catch (_) {
-    // tables not configured yet — return zeros
-  }
+    // Total COD row count
+    const { count } = await admin.from(codTable).select('*', { count: 'exact', head: true })
+    codCount = count ?? 0
+
+    // Rejected COD = order confirm = 'false'  OR  status = 'rejected' / 'cancelled'
+    const { data: rejectedRows } = await admin
+      .from(codTable)
+      .select('"order confirm", status, shipping_charge')
+
+    if (rejectedRows) {
+      const rejected = rejectedRows.filter((r: Record<string, unknown>) =>
+        r['order confirm'] === 'false' ||
+        String(r['order confirm']).toLowerCase() === 'false' ||
+        ['rejected', 'cancelled', 'cancel'].includes(String(r.status ?? '').toLowerCase())
+      )
+      codRejectedCount = rejected.length
+      revenueSaved = rejected.reduce((s: number, r: Record<string, unknown>) => s + Number(r.shipping_charge ?? 0), 0)
+    }
+  } catch (_) { /* table not found — skip */ }
+
+  // ── Cart data ──────────────────────────────────────────────────────────────
+  let cartCount = 0
+  let revenueMade = 0       // sum of total_amount on confirmed cart orders (call status = completed/confirmed)
+  let cartConvertedCount = 0
+
+  try {
+    const { count } = await admin.from(cartTable).select('*', { count: 'exact', head: true })
+    cartCount = count ?? 0
+
+    const { data: cartRows } = await admin
+      .from(cartTable)
+      .select('"call status", "WhatsApp Status", total_amount')
+
+    if (cartRows) {
+      const confirmed = cartRows.filter((r: Record<string, unknown>) => {
+        const cs = String(r['call status'] ?? '').toLowerCase()
+        const wa = String(r['WhatsApp Status'] ?? '').toLowerCase()
+        return ['completed', 'confirmed', 'success'].includes(cs) ||
+               ['confirmed', 'success'].includes(wa)
+      })
+      cartConvertedCount = confirmed.length
+      revenueMade = confirmed.reduce((s: number, r: Record<string, unknown>) => s + Number(r.total_amount ?? 0), 0)
+    }
+  } catch (_) { /* table not found — skip */ }
+
+  // ── Call stats ─────────────────────────────────────────────────────────────
+  // Pulled from Dograh API via /api/calls — we store zeros here and
+  // let the frontend aggregate from the calls list when it loads.
+  // But we CAN derive call cost savings from calls data if stored locally.
+  // For now, use a reasonable heuristic: each completed call = ₹50 saved vs manual agent.
+  // This will be replaced by actual call data when calls tab is loaded.
+  const callStats = { total: 0, completed: 0, failed: 0, no_answer: 0, in_progress: 0 }
+
+  // ── Revenue aggregates ─────────────────────────────────────────────────────
+  // Call cost savings: estimated ₹50/completed call (human agent cost avoided)
+  const callCostSavings = callStats.completed * 50
+  const totalNetImpact = revenueMade + revenueSaved + callCostSavings
 
   return NextResponse.json({
-    wallet_balance: tenant?.wallet_balance ?? 0,
+    wallet_balance: walletBalance,
     spent_this_month: spent,
     credited_this_month: credited,
     cod_count: codCount,
     cart_count: cartCount,
-    call_stats: { total: 0, completed: 0, failed: 0, no_answer: 0, in_progress: 0 },
+    call_stats: callStats,
+    // Revenue metrics
+    revenue: {
+      made: revenueMade,                  // cart confirmed orders total_amount
+      saved: revenueSaved,                // rejected COD × shipping_charge
+      call_cost_savings: callCostSavings, // completed calls × ₹50
+      total_net: totalNetImpact,          // made + saved + call_savings
+      cod_rejected_count: codRejectedCount,
+      cart_converted_count: cartConvertedCount,
+    },
   })
 }

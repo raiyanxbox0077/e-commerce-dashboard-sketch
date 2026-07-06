@@ -3,13 +3,80 @@
 import { useState } from "react"
 import useSWR from "swr"
 import {
-  Search, ExternalLink, PhoneCall, MessageCircle,
-  ShoppingBag, AlertCircle, X, Star, HeadphonesIcon
+  Search, ExternalLink, PhoneCall,
+  ShoppingBag, AlertCircle, X, Star, ChevronRight, Loader2,
+  PhoneOutgoing,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTenant } from "@/hooks/use-tenant"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
+
+// ─── Run Mini Panel (fetches call detail for a RUN_ID inline) ────────────────
+
+interface RunMiniPanelProps { runId: string; onClose: () => void }
+
+function RunMiniPanel({ runId, onClose }: RunMiniPanelProps) {
+  const { data, isLoading } = useSWR(`/api/calls/${runId}`, fetcher)
+  const d = data && !data.error ? data : null
+
+  const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
+    completed:   { label: "Completed",   color: "text-[#1a7a32]",  bg: "bg-[#34c759]/10" },
+    failed:      { label: "Failed",      color: "text-[#cc0000]",  bg: "bg-[#ff3b30]/10" },
+    no_answer:   { label: "No Answer",   color: "text-[#8a5900]",  bg: "bg-[#ff9500]/10" },
+    in_progress: { label: "In Progress", color: "text-[#0066cc]",  bg: "bg-[#0066cc]/10" },
+  }
+
+  const S = d?.status ? (STATUS_CFG[d.status] ?? STATUS_CFG.failed) : null
+
+  return (
+    <div className="mt-3 bg-[#f5f5f7] rounded-xl overflow-hidden border border-black/[0.06]">
+      <div className="flex items-center gap-2 px-3.5 py-2.5 bg-white border-b border-black/[0.06]">
+        <PhoneOutgoing className="w-3.5 h-3.5 text-[#0066cc] shrink-0" />
+        <p className="text-[12px] font-semibold text-[#1d1d1f] flex-1 font-mono truncate">{runId}</p>
+        {S && <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", S.bg, S.color)}>{S.label}</span>}
+        <button onClick={onClose} className="p-1 rounded-md hover:bg-[#f5f5f7] text-[#6e6e73]">
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+      <div className="px-3.5 py-3 space-y-2">
+        {isLoading && (
+          <div className="flex items-center gap-2 text-[12px] text-[#6e6e73]">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading call details…
+          </div>
+        )}
+        {data?.error && <p className="text-[12px] text-[#cc0000]">Could not load: {data.error}</p>}
+        {d && (
+          <div className="space-y-1.5">
+            {[
+              ["Phone",    d.phone_number ?? "—"],
+              ["Agent",    d.agent_name   ?? "—"],
+              ["Duration", d.duration ? `${Math.floor(d.duration / 60)}m ${d.duration % 60}s` : "—"],
+              ["Time",     d.created_at ? new Date(d.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-3 text-[12px]">
+                <span className="text-[#6e6e73]">{k}</span>
+                <span className="font-medium text-[#1d1d1f] truncate text-right max-w-[60%]">{v}</span>
+              </div>
+            ))}
+            {d.summary && (
+              <div className="mt-2 pt-2 border-t border-black/[0.06]">
+                <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-1">Summary</p>
+                <p className="text-[12px] text-[#1d1d1f] leading-relaxed">{d.summary}</p>
+              </div>
+            )}
+            {d.recording_url && (
+              <a href={d.recording_url} target="_blank" rel="noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] text-[#0066cc] hover:underline">
+                <PhoneCall className="w-3 h-3" /> Listen to recording
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -98,6 +165,7 @@ const COD_STATUS: Record<string, { label: string; color: string; bg: string }> =
 }
 
 function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => void }) {
+  const [expandedRun, setExpandedRun] = useState(false)
   const statusKey = (order.status ?? "pending").toLowerCase()
   const S = COD_STATUS[statusKey] ?? { label: order.status ?? "—", color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
   const orderId = order.order_number ?? `#${order["order id"] ?? "—"}`
@@ -136,8 +204,16 @@ function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => vo
           </div>
         </Section>
         {order.RUN_ID && (
-          <Section label="Call">
-            <Grid2 items={[["Run ID", order.RUN_ID]]} mono />
+          <Section label="Workflow Run">
+            <button
+              onClick={() => setExpandedRun(v => !v)}
+              className="flex items-center gap-2 w-full bg-[#f5f5f7] hover:bg-[#ebebf0] rounded-xl px-3.5 py-2.5 transition-colors text-left"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5 text-[#0066cc] shrink-0" />
+              <code className="text-[12px] font-mono text-[#0066cc] flex-1 truncate">{order.RUN_ID}</code>
+              <ChevronRight className={cn("w-3.5 h-3.5 text-[#6e6e73] shrink-0 transition-transform", expandedRun && "rotate-90")} />
+            </button>
+            {expandedRun && <RunMiniPanel runId={order.RUN_ID} onClose={() => setExpandedRun(false)} />}
           </Section>
         )}
       </div>
@@ -152,7 +228,6 @@ function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => vo
             <ExternalLink className="w-3.5 h-3.5" /> Transcript
           </a>
         )}
-        <button className="action-btn-blue"><PhoneCall className="w-3.5 h-3.5" /> Trigger Call</button>
       </div>
     </div>
   )
@@ -281,8 +356,6 @@ function CartDetailPanel({ row, onClose }: { row: CartItem; onClose: () => void 
             <ExternalLink className="w-3.5 h-3.5" /> Open Checkout
           </a>
         )}
-        <button className="action-btn-green"><MessageCircle className="w-3.5 h-3.5" /> WA Recovery</button>
-        <button className="action-btn-blue"><PhoneCall className="w-3.5 h-3.5" /> Trigger Call</button>
       </div>
     </div>
   )
@@ -405,8 +478,6 @@ function SupportDetailPanel({ ticket, onClose }: { ticket: SupportTicket; onClos
       <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
         {ticket.recording_url && <a href={ticket.recording_url} target="_blank" rel="noreferrer" className="action-link-blue"><PhoneCall className="w-3.5 h-3.5" /> Recording</a>}
         {ticket.transcript_url && <a href={ticket.transcript_url} target="_blank" rel="noreferrer" className="action-link-gray"><ExternalLink className="w-3.5 h-3.5" /> Transcript</a>}
-        <button className="action-btn-green"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
-        <button className="action-btn-blue"><PhoneCall className="w-3.5 h-3.5" /> Call</button>
       </div>
     </div>
   )
@@ -530,8 +601,6 @@ function ReviewDetailPanel({ review, onClose }: { review: Review; onClose: () =>
       <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
         {review.recording_url && <a href={review.recording_url} target="_blank" rel="noreferrer" className="action-link-blue"><PhoneCall className="w-3.5 h-3.5" /> Recording</a>}
         {review.transcript_url && <a href={review.transcript_url} target="_blank" rel="noreferrer" className="action-link-gray"><ExternalLink className="w-3.5 h-3.5" /> Transcript</a>}
-        <button className="action-btn-green"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
-        <button className="action-btn-blue"><PhoneCall className="w-3.5 h-3.5" /> Call</button>
       </div>
     </div>
   )
@@ -605,13 +674,22 @@ export function ShopifyTab() {
   const [subTab, setSubTab] = useState<ShopifySubTab>("cod")
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
+  const [codStatusFilter, setCodStatusFilter] = useState("all")
+  const [cartStatusFilter, setCartStatusFilter] = useState("all")
 
   const [selectedCod, setSelectedCod]       = useState<CodOrder | null>(null)
   const [selectedCart, setSelectedCart]     = useState<CartItem | null>(null)
   const [selectedSupport, setSelectedSupport] = useState<SupportTicket | null>(null)
   const [selectedReview, setSelectedReview]   = useState<Review | null>(null)
 
-  const { data: codData,     isLoading: codLoading }     = useSWR(subTab === "cod"     ? `/api/shopify/cod?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
+  // Build COD query — status filter maps to "order confirm" values
+  const codStatusParam = codStatusFilter === "confirmed" ? "&order_confirm=true"
+    : codStatusFilter === "rejected" ? "&order_confirm=false"
+    : codStatusFilter === "pending"  ? "&order_confirm=pending"
+    : ""
+  const cartStatusParam = cartStatusFilter !== "all" ? `&call_status=${encodeURIComponent(cartStatusFilter)}` : ""
+
+  const { data: codData,     isLoading: codLoading }     = useSWR(subTab === "cod"     ? `/api/shopify/cod?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}${codStatusParam}` : null, fetcher, { keepPreviousData: true })
   const { data: cartData,    isLoading: cartLoading }    = useSWR(subTab === "cart"    ? `/api/shopify/cart?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
   const { data: supportData, isLoading: supportLoading } = useSWR(subTab === "support" ? `/api/support?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
   const { data: reviewData,  isLoading: reviewLoading }  = useSWR(subTab === "reviews" ? `/api/reviews?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
@@ -633,6 +711,7 @@ export function ShopifyTab() {
 
   function switchSubTab(id: ShopifySubTab) {
     setSubTab(id); setPage(1); setSearch("")
+    setCodStatusFilter("all"); setCartStatusFilter("all")
     setSelectedCod(null); setSelectedCart(null); setSelectedSupport(null); setSelectedReview(null)
   }
 
@@ -657,8 +736,8 @@ export function ShopifyTab() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white rounded-2xl hairline px-4 py-3 flex items-center gap-3">
-        <div className="flex-1 flex items-center gap-2 bg-[#f5f5f7] rounded-full px-3.5 py-2">
+      <div className="bg-white rounded-2xl hairline px-4 py-3 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-full px-3.5 py-2 min-w-[180px] flex-1">
           <Search className="w-4 h-4 text-[#6e6e73] shrink-0" />
           <input
             value={search}
@@ -667,7 +746,57 @@ export function ShopifyTab() {
             className="bg-transparent text-[13px] text-[#1d1d1f] outline-none w-full placeholder:text-[#6e6e73]"
           />
         </div>
-        <span className="text-[12px] text-[#6e6e73] shrink-0">{total} records</span>
+
+        {/* COD status filter pills */}
+        {subTab === "cod" && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {(["all", "confirmed", "rejected", "pending"] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => { setCodStatusFilter(s); setPage(1) }}
+                className={cn(
+                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
+                  codStatusFilter === s
+                    ? s === "confirmed" ? "bg-[#34c759] text-white"
+                      : s === "rejected" ? "bg-[#ff3b30] text-white"
+                      : s === "pending"  ? "bg-[#ff9500] text-white"
+                      : "bg-[#1d1d1f] text-white"
+                    : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
+                )}
+              >
+                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Cart status filter pills */}
+        {subTab === "cart" && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {(["all", "COMPLETED", "completed", "IN_PROGRESS"] as const).map(s => {
+              const label = s === "all" ? "All" : s === "COMPLETED" || s === "completed" ? "Completed" : "In Progress"
+              const isActive = s === "all" ? cartStatusFilter === "all" : cartStatusFilter === s
+              return (
+                <button
+                  key={s}
+                  onClick={() => { setCartStatusFilter(s); setPage(1) }}
+                  className={cn(
+                    "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors",
+                    isActive
+                      ? s === "all" ? "bg-[#1d1d1f] text-white"
+                        : s.toLowerCase().includes("progress") ? "bg-[#0066cc] text-white"
+                        : "bg-[#34c759] text-white"
+                      : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
+                  )}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <span className="text-[12px] text-[#6e6e73] shrink-0 ml-auto">{total} records</span>
       </div>
 
       {/* Error */}

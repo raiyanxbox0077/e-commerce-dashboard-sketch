@@ -64,13 +64,18 @@ export function WhatsAppTab() {
   const [search, setSearch] = useState("")
   const [messageInput, setMessageInput] = useState("")
   const [sending, setSending] = useState(false)
+  const [chatPage, setChatPage] = useState(1)
+  const [allChats, setAllChats] = useState<BotSailorChat[]>([])
+  const [hasMoreChats, setHasMoreChats] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const chatListBottomRef = useRef<HTMLDivElement>(null)
+  const CHATS_PER_PAGE = 20
 
   const needsConfig = !tenant?.botsailor_api_key
 
   const { data: chatsData, isLoading: chatsLoading } = useSWR(
-    !needsConfig && subTab === "chats" ? `/api/whatsapp/chats` : null,
-    fetcher, { refreshInterval: 15000 }
+    !needsConfig && subTab === "chats" ? `/api/whatsapp/chats?page=${chatPage}&limit=${CHATS_PER_PAGE}` : null,
+    fetcher, { refreshInterval: chatPage === 1 ? 15000 : 0 }
   )
   const { data: contactsData, isLoading: contactsLoading } = useSWR(
     !needsConfig && subTab === "contacts"
@@ -85,7 +90,48 @@ export function WhatsAppTab() {
 
   // BotSailor returns { status: "1", message: [...] } — message can be a string on error, guard with isArray
   const rawChats = chatsData?.message ?? chatsData?.data ?? chatsData?.chats
-  const chats: BotSailorChat[] = Array.isArray(rawChats) ? rawChats : []
+  const newChats: BotSailorChat[] = Array.isArray(rawChats) ? rawChats : []
+
+  // Accumulate chats across pages
+  useEffect(() => {
+    if (!newChats.length) {
+      if (chatPage > 1) setHasMoreChats(false)
+      return
+    }
+    if (chatPage === 1) {
+      setAllChats(newChats)
+    } else {
+      setAllChats(prev => {
+        const existingIds = new Set(prev.map(c => c.subscriber_id ?? c.id))
+        const fresh = newChats.filter(c => !existingIds.has(c.subscriber_id ?? c.id))
+        return [...prev, ...fresh]
+      })
+    }
+    if (newChats.length < CHATS_PER_PAGE) setHasMoreChats(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatsData, chatPage])
+
+  // Reset when switching sub-tabs or search changes
+  useEffect(() => {
+    setChatPage(1)
+    setAllChats([])
+    setHasMoreChats(true)
+  }, [subTab, search])
+
+  // IntersectionObserver at bottom of chat list to trigger next page
+  useEffect(() => {
+    const el = chatListBottomRef.current
+    if (!el || !hasMoreChats) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !chatsLoading) {
+        setChatPage(p => p + 1)
+      }
+    }, { threshold: 0.1 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [hasMoreChats, chatsLoading])
+
+  const chats = allChats
   const rawContacts = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers
   const contacts: BotSailorContact[] = Array.isArray(rawContacts) ? rawContacts : []
   // Route now returns { messages: [...] } — normalised array, no more numeric-keyed object
@@ -185,7 +231,7 @@ export function WhatsAppTab() {
           {/* Chat list */}
           {subTab === "chats" && (
             <div className="flex-1 overflow-y-auto">
-              {chatsLoading ? (
+              {chatsLoading && chatPage === 1 ? (
                 [...Array(6)].map((_, i) => (
                   <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-black/[0.04]">
                     <div className="w-10 h-10 rounded-full bg-gray-100 animate-pulse shrink-0" />
@@ -238,6 +284,16 @@ export function WhatsAppTab() {
                   </button>
                 )
               })}
+              {/* Scroll pagination sentinel */}
+              <div ref={chatListBottomRef} className="h-4 shrink-0" />
+              {chatsLoading && chatPage > 1 && (
+                <div className="flex justify-center py-3">
+                  <div className="w-5 h-5 border-2 border-[#0066cc] border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              {!hasMoreChats && allChats.length > CHATS_PER_PAGE && (
+                <p className="text-center text-[11px] text-[#c7c7cc] py-3">All conversations loaded</p>
+              )}
             </div>
           )}
 

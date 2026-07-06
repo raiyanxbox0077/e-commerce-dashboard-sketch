@@ -1,7 +1,6 @@
 "use client"
 
 import { Download, CheckCircle2, Zap, PhoneCall, MessageCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
 
 const INVOICES = [
   { id: "INV-0024", date: "2026-07-01", amount: 850, status: "paid", period: "July 2026" },
@@ -38,50 +37,6 @@ function UsageMeter({ label, used, total, unit, color, icon: Icon }: UsageMeterP
   )
 }
 
-interface PlanCardProps {
-  name: string
-  price: number
-  features: string[]
-  current?: boolean
-  recommended?: boolean
-}
-
-function PlanCard({ name, price, features, current, recommended }: PlanCardProps) {
-  return (
-    <div className={cn(
-      "rounded-2xl p-5 border-2 transition-all",
-      current ? "border-[#0066cc] bg-[#0066cc]/5" : "border-black/[0.08] bg-white"
-    )}>
-      {(current || recommended) && (
-        <span className={cn(
-          "inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full mb-3",
-          current ? "bg-[#0066cc] text-white" : "bg-[#34c759] text-white"
-        )}>
-          {current ? "Current Plan" : "Recommended"}
-        </span>
-      )}
-      <p className="text-[17px] font-semibold text-[#1d1d1f]">{name}</p>
-      <p className="text-[28px] font-semibold text-[#1d1d1f] mt-1">
-        ₹{price.toLocaleString("en-IN")}
-        <span className="text-[14px] font-normal text-[#6e6e73]">/mo</span>
-      </p>
-      <ul className="mt-4 space-y-2">
-        {features.map((f) => (
-          <li key={f} className="flex items-center gap-2 text-[13px] text-[#6e6e73]">
-            <CheckCircle2 className="w-3.5 h-3.5 text-[#34c759] shrink-0" />
-            {f}
-          </li>
-        ))}
-      </ul>
-      {!current && (
-        <button className="mt-4 w-full py-2.5 rounded-full text-[13px] font-semibold bg-[#0066cc] text-white active:scale-95 transition-transform">
-          Upgrade
-        </button>
-      )}
-    </div>
-  )
-}
-
 export function BillingTab() {
   return (
     <div className="space-y-5">
@@ -92,16 +47,6 @@ export function BillingTab() {
           <UsageMeter label="Call Minutes" used={152} total={500} unit="min" color="#0066cc" icon={PhoneCall} />
           <UsageMeter label="WhatsApp Messages" used={840} total={2000} unit="msg" color="#34c759" icon={MessageCircle} />
           <UsageMeter label="API Credits" used={847} total={5000} unit="₹" color="#af52de" icon={Zap} />
-        </div>
-      </div>
-
-      {/* Plans */}
-      <div>
-        <p className="text-[15px] font-semibold text-[#1d1d1f] mb-3">Plans</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <PlanCard name="Starter" price={999} current features={["500 call minutes", "2,000 WA messages", "₹5,000 credits", "3 agents", "Email support"]} />
-          <PlanCard name="Growth" price={2499} recommended features={["2,000 call minutes", "10,000 WA messages", "₹20,000 credits", "10 agents", "Priority support"]} />
-          <PlanCard name="Scale" price={5999} features={["10,000 call minutes", "Unlimited WA messages", "₹1,00,000 credits", "Unlimited agents", "Dedicated support"]} />
         </div>
       </div>
 

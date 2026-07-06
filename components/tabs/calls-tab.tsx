@@ -449,11 +449,12 @@ export function CallsTab() {
   const { tenant } = useTenant()
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
+  const [filterType, setFilterType] = useState("all")
   const [page, setPage] = useState(1)
   const [selectedRun, setSelectedRun] = useState<Run | null>(null)
 
   // Fetch runs — API already fans out across all saved workflow IDs automatically
-  const queryParams = `?page=${page}&limit=20${filterStatus !== "all" ? `&status=${filterStatus}` : ""}`
+  const queryParams = `?page=${page}&limit=20${filterStatus !== "all" ? `&status=${filterStatus}` : ""}${filterType !== "all" ? `&type=${filterType}` : ""}`
   const { data, isLoading } = useSWR(
     tenant?.voice_api_key ? `/api/calls${queryParams}` : null,
     fetcher
@@ -506,6 +507,26 @@ export function CallsTab() {
             />
           </div>
 
+          {/* Type filter — COD / Cart */}
+          <div className="flex items-center gap-1">
+            {(["all", "cod", "cart"] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => { setFilterType(t); setPage(1) }}
+                className={cn(
+                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors uppercase tracking-wide",
+                  filterType === t
+                    ? t === "cod"  ? "bg-[#34c759] text-white"
+                      : t === "cart" ? "bg-[#af52de] text-white"
+                      : "bg-[#1d1d1f] text-white"
+                    : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
+                )}
+              >
+                {t === "all" ? "All Types" : t.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
           {/* Status filter pills */}
           <div className="flex items-center gap-1 flex-wrap">
             {(["all", "completed", "failed", "no_answer"] as const).map(s => (
@@ -519,7 +540,7 @@ export function CallsTab() {
                     : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
                 )}
               >
-                {s === "all" ? "All" : s.replace("_", " ")}
+                {s === "all" ? "All Status" : s.replace("_", " ")}
               </button>
             ))}
           </div>

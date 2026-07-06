@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 async function getTenantVoiceConfig(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -39,6 +39,22 @@ export async function GET(req: Request) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const limitPerPage = parseInt(searchParams.get('limit') ?? '20')
   const statusFilter = searchParams.get('status') ?? ''
+  const typeFilter   = searchParams.get('type') ?? '' // 'cod' | 'cart' | ''
+
+  // For COD/Cart type filters — fetch known RUN_IDs from Supabase tables
+  let typeRunIds: Set<string> | null = null
+  if (typeFilter === 'cod' || typeFilter === 'cart') {
+    try {
+      const { data: tenant } = await (await createClient())
+        .from('tenants').select('cod_table_name, cart_table_name').eq('user_id', user.id).single()
+      const admin = createAdminClient()
+      const tableName = typeFilter === 'cod'
+        ? (tenant?.cod_table_name || 'E-commerce COD confimation')
+        : (tenant?.cart_table_name || 'E-commerce add to cart')
+      const { data: rows } = await admin.from(tableName).select('RUN_ID').not('RUN_ID', 'is', null)
+      typeRunIds = new Set((rows ?? []).map((r: Record<string, unknown>) => String(r.RUN_ID)).filter(Boolean))
+    } catch (_) { typeRunIds = new Set() }
+  }
 
   const safeBase = 'https://voice.larynxai.in'
   function abs(url: unknown): string | null {
@@ -88,10 +104,15 @@ export async function GET(req: Request) {
   // Filter to only runs belonging to the configured workflow IDs
   const filtered = allRuns.filter(r => workflowIds.includes(String(r.workflow_id)))
 
+  // Apply COD/Cart type filter — match run_id against known RUN_IDs in Supabase tables
+  const afterType = typeRunIds !== null
+    ? filtered.filter(r => typeRunIds!.has(String(r.id ?? r.run_id ?? '')))
+    : filtered
+
   // Apply status filter if provided
   const afterStatus = statusFilter
-    ? filtered.filter(r => String(r.status) === statusFilter)
-    : filtered
+    ? afterType.filter(r => String(r.status) === statusFilter)
+    : afterType
 
   // Sort by created_at desc (API returns newest first already, but re-sort after filtering)
   afterStatus.sort((a, b) => {
