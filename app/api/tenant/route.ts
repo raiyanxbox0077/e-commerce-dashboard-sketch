@@ -63,12 +63,30 @@ export async function PATCH(req: Request) {
     if (body[key] !== undefined) updates[key] = body[key]
   }
 
-  const { data, error } = await supabase
+  // Columns that may not exist yet in older deployments — silently drop them if Postgres
+  // returns a "column does not exist" error, then retry without those columns.
+  const newColumns = ['support_table_name', 'review_table_name', 'voice_workflow_ids', 'voice_workflow_id']
+
+  let payload = { ...updates, updated_at: new Date().toISOString() }
+  let { data, error } = await supabase
     .from('tenants')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('user_id', user.id)
     .select()
     .single()
+
+  if (error?.message?.includes('column') && error.message.includes('does not exist')) {
+    // Strip any of the new columns that don't exist yet and retry once
+    for (const col of newColumns) delete payload[col]
+    const retry = await supabase
+      .from('tenants')
+      .update(payload)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+    data = retry.data
+    error = retry.error
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)

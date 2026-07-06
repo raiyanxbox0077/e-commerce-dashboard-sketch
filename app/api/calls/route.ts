@@ -4,11 +4,18 @@ import { NextResponse } from 'next/server'
 async function getTenantVoiceConfig(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
     .from('tenants')
-    .select('voice_api_key, voice_base_url, voice_workflow_ids, voice_workflow_id')
+    .select('voice_api_key, voice_base_url')
     .eq('user_id', userId)
     .single()
-  // voice_workflow_ids is newline-separated; fall back to legacy single field
-  const raw: string = data?.voice_workflow_ids ?? data?.voice_workflow_id ?? ''
+  // Attempt to read new multi-workflow columns separately — they may not exist yet if the
+  // user hasn't run the migration SQL yet. .catch() ensures no crash if the column is missing.
+  const { data: wfData } = await (supabase
+    .from('tenants')
+    .select('voice_workflow_ids, voice_workflow_id')
+    .eq('user_id', userId)
+    .single() as Promise<{ data: Record<string, string> | null; error: unknown }>)
+    .catch(() => ({ data: null }))
+  const raw: string = wfData?.voice_workflow_ids ?? wfData?.voice_workflow_id ?? ''
   const workflowIds: string[] = raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : []
   return {
     apiKey: data?.voice_api_key ?? null,

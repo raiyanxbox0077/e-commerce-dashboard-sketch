@@ -6,11 +6,19 @@ export async function GET(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Use a known-good column first; then attempt the new column separately
   const { data: tenant } = await supabase
+    .from('tenants')
+    .select('cod_table_name')
+    .eq('user_id', user.id)
+    .single()
+
+  const { data: tenantExtra } = await supabase
     .from('tenants')
     .select('review_table_name')
     .eq('user_id', user.id)
     .single()
+    .catch(() => ({ data: null, error: null }))
 
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') ?? '1')
@@ -18,7 +26,7 @@ export async function GET(req: Request) {
   const search = searchParams.get('search') ?? ''
 
   const admin = createAdminClient()
-  const tableName = tenant?.review_table_name || 'customer_review'
+  const tableName = (tenantExtra as Record<string, string> | null)?.review_table_name || 'customer_review'
 
   let query = admin
     .from(tableName)
