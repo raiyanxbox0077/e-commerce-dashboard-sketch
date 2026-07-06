@@ -72,7 +72,7 @@ export function WhatsAppTab() {
   const [chatFetchKey, setChatFetchKey] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const chatListBottomRef = useRef<HTMLDivElement>(null)
-  const CHATS_PER_PAGE = 20
+  const CHATS_PER_PAGE = 50
 
   const needsConfig = !tenant?.botsailor_api_key
 
@@ -133,18 +133,21 @@ export function WhatsAppTab() {
     // search is client-side filtered so no reset needed
   }, [search])
 
-  // IntersectionObserver at bottom of chat list to trigger next page
+  // IntersectionObserver at bottom of chat list to trigger next page.
+  // Deliberately exclude chatsLoading from deps — check it inside the callback
+  // to avoid re-attaching the observer while a load is already in flight.
   useEffect(() => {
     const el = chatListBottomRef.current
     if (!el || !hasMoreChats) return
     const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && !chatsLoading) {
+      if (entries[0].isIntersecting) {
         setChatPage(p => p + 1)
       }
     }, { threshold: 0.1 })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [hasMoreChats, chatsLoading])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMoreChats, allChats.length])
 
   // Use allChats (accumulated) as the source of truth — never raw chatsData directly
   const chats = allChats

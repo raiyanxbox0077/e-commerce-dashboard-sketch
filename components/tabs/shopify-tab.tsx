@@ -166,8 +166,8 @@ const COD_STATUS: Record<string, { label: string; color: string; bg: string }> =
 
 function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => void }) {
   const [expandedRun, setExpandedRun] = useState(false)
-  const statusKey = (order.status ?? "pending").toLowerCase()
-  const S = COD_STATUS[statusKey] ?? { label: order.status ?? "—", color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
+  const statusKey = codOrderStatus(order)
+  const S = COD_STATUS[statusKey] ?? { label: statusKey, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
   const orderId = order.order_number ?? `#${order["order id"] ?? "—"}`
 
   return (
@@ -233,9 +233,17 @@ function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => vo
   )
 }
 
+function codOrderStatus(order: CodOrder): string {
+  const oc = order["order confirm"]
+  if (oc === "true")  return "confirmed"
+  if (oc === "false") return "rejected"
+  // null / undefined = pending
+  return "pending"
+}
+
 function CodRow({ order, selected, onSelect }: { order: CodOrder; selected: boolean; onSelect: () => void }) {
-  const statusKey = (order.status ?? "pending").toLowerCase()
-  const S = COD_STATUS[statusKey] ?? { label: order.status ?? "—", color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
+  const statusKey = codOrderStatus(order)
+  const S = COD_STATUS[statusKey] ?? { label: statusKey, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
   const orderId = order.order_number ?? `#${order["order id"] ?? "—"}`
   return (
     <tr className={cn("border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer", selected && "bg-[#0066cc]/5")} onClick={onSelect}>

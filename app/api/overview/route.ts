@@ -94,8 +94,17 @@ export async function GET() {
       if (res.ok) {
         const raw = await res.json()
         const allRuns: Record<string, unknown>[] = Array.isArray(raw) ? raw : (raw?.runs ?? [])
-        // Filter to this tenant's workflows only
-        const runs = wfIds.length ? allRuns.filter(r => wfIds.includes(String(r.workflow_id))) : allRuns
+        // voice_workflow_id may be stored as "23\n25" or "23,25" or a plain number — normalise
+        const normIds = wfIds
+          .flatMap(id => id.split(/[\n,\s]+/))
+          .map(id => id.trim())
+          .filter(Boolean)
+        // Only filter if we have IDs AND at least one matches a real run
+        const filtered = normIds.length
+          ? allRuns.filter(r => normIds.includes(String(r.workflow_id)))
+          : allRuns
+        // If zero matches (IDs stored don't match real runs), use all runs for this org
+        const runs = filtered.length > 0 ? filtered : allRuns
 
         callStats.total = runs.length
         for (const r of runs) {

@@ -30,11 +30,6 @@ export async function GET(req: Request) {
   const { apiKey, baseUrl, workflowIds } = await getTenantVoiceConfig(supabase, user.id)
   if (!apiKey) return NextResponse.json({ error: 'Voice API key not configured. Please add it in Profile > Integrations.' }, { status: 400 })
 
-  // If no workflows configured, return early with a flag so the UI can prompt the user
-  if (workflowIds.length === 0) {
-    return NextResponse.json({ runs: [], total: 0, page: 1, total_pages: 0, no_workflows_configured: true })
-  }
-
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') ?? '1')
   const limitPerPage = parseInt(searchParams.get('limit') ?? '20')
@@ -96,8 +91,13 @@ export async function GET(req: Request) {
   const raw = await res.json()
   const allRuns: Record<string, unknown>[] = Array.isArray(raw) ? raw : (raw?.runs ?? [])
 
-  // Filter to only runs belonging to the configured workflow IDs
-  const filtered = allRuns.filter(r => workflowIds.includes(String(r.workflow_id)))
+  // Also split on commas/spaces in case ID was stored as "23,25" or "23 25"
+  const normWorkflowIds = workflowIds.flatMap(id => id.split(/[,\s]+/)).map(s => s.trim()).filter(Boolean)
+  const byWorkflow = normWorkflowIds.length
+    ? allRuns.filter(r => normWorkflowIds.includes(String(r.workflow_id)))
+    : allRuns
+  // If stored IDs don't match any real runs, fall back to all org runs
+  const filtered = byWorkflow.length > 0 ? byWorkflow : allRuns
 
   // Apply status filter using derived status (disposition → status mapping)
   const afterStatus = statusFilter
