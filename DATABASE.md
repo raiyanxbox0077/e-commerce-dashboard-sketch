@@ -22,6 +22,7 @@ create table public.tenants (
 
   -- Wallet
   wallet_balance      numeric(12,2) default 0,
+  wallet_transactions jsonb default '[]'::jsonb,   -- JSONB array of top-up records (newest first, capped at 100)
 
   -- Dograh Voice API
   voice_api_key       text,
@@ -95,14 +96,32 @@ alter table public.tenants
 
 Always use the **server client** in API routes. Never use the browser client in server-side code.
 
-## Wallet Transactions
+## Wallet
 
-Wallet top-ups are processed via Razorpay. After payment verification, `wallet_balance` is incremented with an SQL update:
+Transactions are stored as a JSONB array on the `tenants` row — no separate table needed.
+
+Run this in the Supabase SQL editor if the columns are missing:
 
 ```sql
-update public.tenants
-set wallet_balance = wallet_balance + $amount
-where user_id = $userId;
+alter table public.tenants
+  add column if not exists wallet_balance      numeric(12,2) default 0;
+
+alter table public.tenants
+  add column if not exists wallet_transactions jsonb default '[]'::jsonb;
 ```
 
-No separate transactions table exists currently — transaction history is pulled from Razorpay's API.
+Each entry in `wallet_transactions` has this shape:
+```json
+{
+  "id": "pay_XXXX",
+  "type": "credit",
+  "amount": 500.00,
+  "description": "Wallet recharge via Razorpay",
+  "razorpay_payment_id": "pay_XXXX",
+  "razorpay_order_id": "order_XXXX",
+  "status": "success",
+  "created_at": "2026-07-06T12:00:00.000Z"
+}
+```
+
+The `wallet_transactions` array is capped at 100 entries (newest first). Balance is updated atomically alongside the transaction append in a single `UPDATE` call.

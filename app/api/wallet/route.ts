@@ -6,14 +6,19 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // wallet_transactions table does not exist — balance lives on tenants.wallet_balance
+  // Transactions stored as JSONB array on tenants.wallet_transactions
   const { data: tenant, error } = await supabase
     .from('tenants')
-    .select('wallet_balance')
+    .select('wallet_balance, wallet_transactions')
     .eq('user_id', user.id)
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ balance: tenant?.wallet_balance ?? 0, transactions: [] })
+  const transactions = Array.isArray(tenant?.wallet_transactions) ? tenant.wallet_transactions : []
+
+  return NextResponse.json({
+    balance: Number(tenant?.wallet_balance ?? 0),
+    transactions,
+  })
 }
