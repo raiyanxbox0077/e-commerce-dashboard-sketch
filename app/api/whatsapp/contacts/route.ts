@@ -34,5 +34,14 @@ export async function GET(req: Request) {
 
   const res = await fetch(`${BOTSAILOR_BASE}/whatsapp/subscriber/list?${params}`)
   const data = await res.json()
+
+  // BotSailor returns 200 even for errors — check status field
+  if (data?.status !== undefined && String(data.status) !== '1') {
+    return NextResponse.json(
+      { error: data?.message ?? 'BotSailor error. Check your Phone Number ID in Profile > Integrations.', botsailor_status: data?.status },
+      { status: 400 }
+    )
+  }
+
   return NextResponse.json(data, { status: res.status })
 }

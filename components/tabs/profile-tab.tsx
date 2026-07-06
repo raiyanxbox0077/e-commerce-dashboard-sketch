@@ -130,14 +130,21 @@ export function ProfileTab() {
       const json = await res.json()
       if (json.error) { setDetectError(json.error); return }
       const accounts = json.accounts ?? []
-      if (accounts.length === 1) {
-        setBotsailorPhoneId(accounts[0].phone_number_id)
-        setDetectedAccounts(accounts)
-      } else if (accounts.length > 1) {
-        setDetectedAccounts(accounts)
-      } else {
+      if (accounts.length === 0) {
         setDetectError("No WhatsApp accounts found on this BotSailor key.")
+        return
       }
+      setDetectedAccounts(accounts)
+      if (accounts.length === 1) {
+        const phoneId = accounts[0].phone_number_id
+        setBotsailorPhoneId(phoneId)
+        // Auto-save immediately so it persists without the user having to click Save
+        await handleSave({
+          botsailor_api_key: botsailorKey,
+          botsailor_phone_id: phoneId,
+        })
+      }
+      // If multiple accounts, show list — user must pick one, then save
     } catch {
       setDetectError("Failed to reach BotSailor. Check your API key.")
     } finally {
@@ -326,11 +333,14 @@ export function ProfileTab() {
                   {detectError && <p className="text-[12px] text-red-600 mt-1.5">{detectError}</p>}
                   {detectedAccounts.length > 1 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-[12px] text-[#6e6e73]">Multiple accounts found — click to select:</p>
+                      <p className="text-[12px] text-[#6e6e73]">Multiple accounts found — click one to select and save:</p>
                       {detectedAccounts.map(a => (
                         <button
                           key={a.phone_number_id}
-                          onClick={() => setBotsailorPhoneId(a.phone_number_id)}
+                          onClick={async () => {
+                            setBotsailorPhoneId(a.phone_number_id)
+                            await handleSave({ botsailor_api_key: botsailorKey, botsailor_phone_id: a.phone_number_id })
+                          }}
                           className={cn(
                             "w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-[12px] border transition-colors",
                             botsailorPhoneId === a.phone_number_id
