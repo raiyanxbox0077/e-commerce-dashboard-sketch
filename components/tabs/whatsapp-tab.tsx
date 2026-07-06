@@ -82,12 +82,15 @@ export function WhatsAppTab() {
 
   const needsConfig = !tenant?.botsailor_api_key
 
-  const { data: chatsData, isLoading: chatsLoading } = useSWR(
+  // BotSailor's subscriber list ignores offset (offset >= limit returns nothing),
+  // so infinite scroll works by growing the `limit` and re-fetching from offset 0.
+  const requestedLimit = chatPage * CHATS_PER_PAGE
+  const { data: chatsData, isLoading: chatsLoading, isValidating: chatsValidating } = useSWR(
     !needsConfig && subTab === "chats"
-      ? `/api/whatsapp/chats?page=${chatPage}&limit=${CHATS_PER_PAGE}&_k=${chatFetchKey}`
+      ? `/api/whatsapp/chats?page=1&limit=${requestedLimit}&_k=${chatFetchKey}`
       : null,
     fetcher,
-    { refreshInterval: chatPage === 1 ? 15000 : 0 }
+    { refreshInterval: 15000, keepPreviousData: true }
   )
   const { data: contactsData, isLoading: contactsLoading } = useSWR(
     !needsConfig && subTab === "contacts"
@@ -101,7 +104,8 @@ export function WhatsAppTab() {
     { refreshInterval: 8000 }
   )
 
-  // Accumulate pages — page 1 resets, subsequent pages append
+  // Each fetch returns a superset (limit grows with chatPage), so we replace the
+  // whole list. If we got fewer rows than requested, there are no more chats.
   useEffect(() => {
     if (!chatsData) return
     const raw = chatsData?.message ?? chatsData?.data ?? chatsData?.chats
@@ -110,22 +114,9 @@ export function WhatsAppTab() {
       setHasMoreChats(false)
       return
     }
-    const incoming: BotSailorChat[] = raw
-
-    if (chatPage === 1) {
-      setAllChats(incoming)
-    } else {
-      setAllChats(prev => {
-        const existingIds = new Set(prev.map(c => String(c.subscriber_id ?? c.id)))
-        const fresh = incoming.filter(c => !existingIds.has(String(c.subscriber_id ?? c.id)))
-        return [...prev, ...fresh]
-      })
-    }
-
-    if (incoming.length < CHATS_PER_PAGE) {
-      setHasMoreChats(false)
-    }
-  }, [chatsData, chatPage])
+    setAllChats(raw as BotSailorChat[])
+    setHasMoreChats(raw.length >= requestedLimit)
+  }, [chatsData, requestedLimit])
 
   // Reset when switching sub-tabs
   useEffect(() => {
@@ -138,13 +129,13 @@ export function WhatsAppTab() {
   // Scroll-based pagination — guard with ref so we don't double-fire
   const loadingPageRef = useRef(false)
   const handleChatListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (!hasMoreChats || loadingPageRef.current || chatsLoading) return
+    if (!hasMoreChats || loadingPageRef.current || chatsValidating) return
     const el = e.currentTarget
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) {
       loadingPageRef.current = true
       setChatPage(p => p + 1)
     }
-  }, [hasMoreChats, chatsLoading])
+  }, [hasMoreChats, chatsValidating])
 
   // Reset scroll guard after page increment resolves (chatsData changes)
   useEffect(() => {
@@ -353,7 +344,7 @@ export function WhatsAppTab() {
               })}
 
               {/* Pagination loader */}
-              {chatsLoading && chatPage > 1 && (
+              {chatsValidating && chatPage > 1 && hasMoreChats && (
                 <div className="flex justify-center py-4">
                   <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
