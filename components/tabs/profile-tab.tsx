@@ -362,22 +362,20 @@ export function ProfileTab() {
                 </div>
               </div>
 
-              {/* Shopify */}
+              {/* Shopify / Order Tables */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-6 h-6 rounded-md bg-[#95bf47]/20 flex items-center justify-center">
                     <Building2 className="w-3.5 h-3.5 text-[#5a8a00]" />
                   </div>
-                  <p className="text-[14px] font-semibold text-[#1d1d1f]">Client Database (Supabase)</p>
+                  <p className="text-[14px] font-semibold text-[#1d1d1f]">Order Tables</p>
                   <span className={cn("ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full",
-                    clientSupabaseUrl ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
+                    (codTableName || cartTableName) ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
                   )}>
-                    {clientSupabaseUrl ? "Connected" : "Not set"}
+                    {(codTableName || cartTableName) ? "Configured" : "Not set"}
                   </span>
                 </div>
-                <TextField label="Store Domain" value={shopifyDomain} onChange={setShopifyDomain} hint="e.g. my-store.myshopify.com" />
-                <TextField label="Supabase URL" value={clientSupabaseUrl} onChange={setClientSupabaseUrl} hint="e.g. https://iaisgphpjgwmrzkffvgu.supabase.co (not the dashboard URL)" />
-                <SecretField label="Anon Key" value={clientSupabaseKey} onChange={setClientSupabaseKey} hint="Client project anon key" />
+                <p className="text-[12px] text-[#6e6e73] mb-3">These tables are read directly from your connected Supabase project. Click Detect to auto-fill from your actual table list.</p>
                 {/* COD Table */}
                 <div className="py-1">
                   <p className="text-[12px] font-medium text-[#6e6e73] mb-1">COD Table Name</p>
@@ -388,7 +386,7 @@ export function ProfileTab() {
                       placeholder="e.g. cod_confirmation"
                       className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
                     />
-                    <DetectTablesButton onSelect={setCodTableName} supabaseUrl={clientSupabaseUrl} supabaseKey={clientSupabaseKey} label="COD" />
+                    <DetectTablesButton onSelect={setCodTableName} label="COD" />
                   </div>
                 </div>
                 {/* Cart Table */}
@@ -401,7 +399,7 @@ export function ProfileTab() {
                       placeholder="e.g. E-commerce add to cart"
                       className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
                     />
-                    <DetectTablesButton onSelect={setCartTableName} supabaseUrl={clientSupabaseUrl} supabaseKey={clientSupabaseKey} label="Cart" />
+                    <DetectTablesButton onSelect={setCartTableName} label="Cart" />
                   </div>
                 </div>
               </div>
@@ -431,8 +429,6 @@ export function ProfileTab() {
                 botsailor_api_key: botsailorKey,
                 botsailor_phone_id: botsailorPhoneId,
                 shopify_store_domain: shopifyDomain,
-                client_supabase_url: clientSupabaseUrl,
-                client_supabase_anon_key: clientSupabaseKey,
                 cod_table_name: codTableName,
                 cart_table_name: cartTableName,
                 razorpay_key_id: razorpayKeyId,
@@ -473,15 +469,14 @@ export function ProfileTab() {
 }
 
 function DetectTablesButton({
-  onSelect, supabaseUrl, supabaseKey, label,
-}: { onSelect: (t: string) => void; supabaseUrl: string; supabaseKey: string; label: string }) {
+  onSelect, label,
+}: { onSelect: (t: string) => void; label: string }) {
   const [tables, setTables] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [err, setErr] = useState("")
 
   async function detect() {
-    if (!supabaseUrl || !supabaseKey) { setErr("Save Supabase URL and Anon Key first"); return }
     setLoading(true); setErr(""); setOpen(false)
     try {
       const res = await fetch("/api/shopify/tables")
