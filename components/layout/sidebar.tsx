@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
 const ACCOUNT_ITEMS: NavItem[] = [
   { id: "wallet",  label: "Wallet",  icon: Wallet },
   { id: "billing", label: "Billing", icon: CreditCard },
-  { id: "profile", label: "Profile", icon: User },
+  { id: "profile", label: "Settings", icon: User },
 ]
 
 interface SidebarProps {
@@ -70,7 +70,7 @@ export function Sidebar({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={onMobileClose}
         />
       )}
@@ -78,31 +78,31 @@ export function Sidebar({
       {/* Sidebar panel */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 flex h-full w-[220px] flex-col bg-white border-r border-black/[0.06]",
+          "fixed top-0 left-0 z-50 flex h-full w-[220px] flex-col bg-white border-r border-[#dddddd]",
           "transition-transform duration-300 ease-in-out",
           "lg:translate-x-0 lg:static lg:z-auto",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-5 h-16 border-b border-black/[0.06]">
+        <div className="flex items-center justify-between px-5 h-[64px] border-b border-[#dddddd]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#2D6A4F] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[#ff385c] flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
             </div>
-            <span className="text-[15px] font-semibold text-[#1A1A1A] tracking-tight">LarynxAI</span>
+            <span className="text-[15px] font-semibold text-[#222222] tracking-tight">LarynxAI</span>
           </div>
           <button
             onClick={onMobileClose}
-            className="lg:hidden p-1.5 rounded-lg hover:bg-[#F2F0EB] text-[#6B7280]"
+            className="lg:hidden p-1.5 rounded-lg hover:bg-[#f7f7f7] text-[#6a6a6a]"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-0.5">
-          <p className="px-3 mb-2 text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-widest">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          <p className="px-3 mb-2 text-[11px] font-semibold text-[#929292] uppercase tracking-widest">
             Main
           </p>
           {NAV_ITEMS.map((item) => (
@@ -114,8 +114,8 @@ export function Sidebar({
             />
           ))}
 
-          <div className="pt-5">
-            <p className="px-3 mb-2 text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-widest">
+          <div className="pt-4">
+            <p className="px-3 mb-2 text-[11px] font-semibold text-[#929292] uppercase tracking-widest">
               Account
             </p>
             {ACCOUNT_ITEMS.map((item) => (
@@ -130,21 +130,21 @@ export function Sidebar({
         </nav>
 
         {/* Wallet + Logout */}
-        <div className="px-3 pb-5 space-y-1.5">
+        <div className="px-3 pb-4 space-y-1">
           <button
             onClick={() => handleSelect("wallet")}
-            className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl bg-[#F2F0EB] hover:bg-[#E8EDEA] transition-colors"
+            className="w-full flex items-center justify-between px-3.5 py-3 rounded-[14px] bg-[#f7f7f7] hover:bg-[#f2f2f2] transition-colors"
           >
             <div className="flex items-center gap-2.5">
-              <Wallet className="w-4 h-4 text-[#2D6A4F]" />
+              <Wallet className="w-4 h-4 text-[#ff385c]" />
               <div className="text-left">
-                <p className="text-[11px] text-[#6B7280]">Balance</p>
-                <p className="text-[13px] font-semibold text-[#1A1A1A]">
+                <p className="text-[11px] text-[#6a6a6a]">Balance</p>
+                <p className="text-[13px] font-semibold text-[#222222]">
                   ₹{walletBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
-            <ChevronRight className="w-3.5 h-3.5 text-[#9CA3AF]" />
+            <ChevronRight className="w-3.5 h-3.5 text-[#929292]" />
           </button>
           <LogoutButton />
         </div>
@@ -162,7 +162,7 @@ function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-[#DC2626] hover:bg-[#DC2626]/8 transition-colors"
+      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-[8px] text-[13px] font-medium text-[#c13515] hover:bg-[#fff0f2] transition-colors"
     >
       <LogOut className="w-4 h-4 shrink-0" />
       Sign Out
@@ -184,18 +184,18 @@ function NavButton({
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition-all",
+        "w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-[13.5px] font-medium transition-all",
         active
-          ? "bg-[#2D6A4F]/10 text-[#2D6A4F]"
-          : "text-[#374151] hover:bg-[#F2F0EB] hover:text-[#1A1A1A]"
+          ? "bg-[#fff0f2] text-[#ff385c]"
+          : "text-[#3f3f3f] hover:bg-[#f7f7f7] hover:text-[#222222]"
       )}
     >
       <Icon
-        className={cn("w-4 h-4 shrink-0", active ? "text-[#2D6A4F]" : "text-[#9CA3AF]")}
+        className={cn("w-4 h-4 shrink-0", active ? "text-[#ff385c]" : "text-[#929292]")}
       />
       <span className="flex-1 text-left">{item.label}</span>
       {item.badge && (
-        <span className="text-[10px] font-semibold bg-[#2D6A4F] text-white px-1.5 py-0.5 rounded-full">
+        <span className="text-[10px] font-semibold bg-[#ff385c] text-white px-1.5 py-0.5 rounded-full">
           {item.badge}
         </span>
       )}
