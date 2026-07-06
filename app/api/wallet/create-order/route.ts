@@ -43,5 +43,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 502 })
   }
 
-  return NextResponse.json({ order_id: order.id, amount: order.amount, currency: order.currency })
+  // key_id is the public Razorpay key — safe to return to the client
+  return NextResponse.json({ order_id: order.id, amount: order.amount, currency: order.currency, key_id: keyId })
 }

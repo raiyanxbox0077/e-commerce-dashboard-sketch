@@ -72,7 +72,7 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
       if (order.error) throw new Error(order.error)
 
       const rzp = new window.Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: order.key_id,
         amount: order.amount,
         currency: order.currency,
         name: "AI Dashboard",
