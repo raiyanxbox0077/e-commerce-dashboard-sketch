@@ -138,16 +138,10 @@ function CodRow({ order }: { order: CodOrder }) {
   )
 }
 
-const COD_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  confirmed:  { label: "Confirmed",  color: "text-[#1a7a32]", bg: "bg-[#34c759]/10" },
-  rejected:   { label: "Rejected",   color: "text-[#cc0000]", bg: "bg-[#ff3b30]/10" },
-  pending:    { label: "Pending",    color: "text-[#8a5900]", bg: "bg-[#ff9500]/10" },
-  no_answer:  { label: "No Answer",  color: "text-[#8a5900]", bg: "bg-[#ff9500]/10" },
-}
-
 function CodRow({ order }: { order: CodOrder }) {
   const [expanded, setExpanded] = useState(false)
-  const S = COD_STATUS[order.cod_status ?? "pending"] ?? COD_STATUS.pending
+  const statusKey = (order.status ?? "pending").toLowerCase()
+  const S = COD_STATUS[statusKey] ?? { label: order.status ?? "—", color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
 
   return (
     <>
