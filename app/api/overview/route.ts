@@ -22,9 +22,21 @@ export async function GET() {
 
   const admin = createAdminClient()
 
-  // ── Table names ────────────────────────────────────────────────────────────
-  const codTable  = tenant?.cod_table_name  || 'E-commerce COD confimation'
-  const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'
+  // ── Table names — try stored name first, fall back to known defaults ───────
+  const COD_TABLE_DEFAULT  = 'E-commerce COD confimation'
+  const CART_TABLE_DEFAULT = 'E-commerce add to cart'
+
+  async function resolveTable(stored: string | null | undefined, fallback: string): Promise<string> {
+    const name = stored?.trim() || fallback
+    if (name === fallback) return name
+    const { error } = await admin.from(name).select('*', { count: 'exact', head: true })
+    // PostgREST returns 404/PGRST116 when table doesn't exist
+    if (error) return fallback
+    return name
+  }
+
+  const codTable  = await resolveTable(tenant?.cod_table_name,  COD_TABLE_DEFAULT)
+  const cartTable = await resolveTable(tenant?.cart_table_name, CART_TABLE_DEFAULT)
 
   // ── COD data ───────────────────────────────────────────────────────────────
   let codCount = 0
@@ -33,11 +45,10 @@ export async function GET() {
   let codConfirmedCount = 0
 
   try {
-    // Total COD row count
     const { count } = await admin.from(codTable).select('*', { count: 'exact', head: true })
     codCount = count ?? 0
 
-    // Confirmed = order confirm = 'true', Rejected = 'false', Pending = null
+    // Derive status from 'order confirm': 'true'=confirmed, 'false'=rejected, null=pending
     const { data: allCodRows } = await admin
       .from(codTable)
       .select('"order confirm", shipping_charge')
@@ -49,7 +60,7 @@ export async function GET() {
       codConfirmedCount = confirmed.length
       revenueSaved = rejected.reduce((s: number, r: Record<string, unknown>) => s + Number(r.shipping_charge ?? 0), 0)
     }
-  } catch (_) { /* table not found — skip */ }
+  } catch (_) { /* table unavailable */ }
 
   // ── Cart data ──────────────────────────────────────────────────────────────
   let cartCount = 0
