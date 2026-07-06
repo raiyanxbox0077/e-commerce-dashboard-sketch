@@ -268,7 +268,7 @@ export function ProfileTab() {
   const [voiceApiKey, setVoiceApiKey] = useState("")
   const [voiceBaseUrl, setVoiceBaseUrl] = useState("")
   // Multi-workflow: stored as newline-separated string in tenant, array in UI
-  const [workflowIds, setWorkflowIds] = useState<string[]>([""])
+  const [workflowIds, setWorkflowIds] = useState<string[]>([])
   const [botsailorKey, setBotsailorKey] = useState("")
   const [botsailorPhoneId, setBotsailorPhoneId] = useState("")
   const [shopifyDomain, setShopifyDomain] = useState("")
@@ -300,9 +300,9 @@ export function ProfileTab() {
     setPhone(tenant.phone ?? "")
     setVoiceApiKey(tenant.voice_api_key ?? "")
     setVoiceBaseUrl(tenant.voice_base_url ?? "")
-    // voice_workflow_ids stored as newline-separated string; fall back to old single field
-    const raw: string = tenant.voice_workflow_ids ?? tenant.voice_workflow_id ?? ""
-    setWorkflowIds(raw ? raw.split("\n").filter(Boolean) : [""])
+    // voice_workflow_id stores newline-separated workflow IDs (reusing existing column)
+    const raw: string = tenant.voice_workflow_id ?? ""
+    setWorkflowIds(raw ? raw.split("\n").filter(Boolean) : [])
     setBotsailorKey(tenant.botsailor_api_key ?? "")
     setBotsailorPhoneId(tenant.botsailor_phone_id ?? "")
     setShopifyDomain(tenant.shopify_store_domain ?? "")
@@ -578,7 +578,7 @@ export function ProfileTab() {
               <SaveButton payload={{
                 voice_api_key: voiceApiKey,
                 voice_base_url: voiceBaseUrl,
-                voice_workflow_ids: workflowIds.filter(Boolean).join("\n"),
+                voice_workflow_id: workflowIds.filter(Boolean).join("\n"),
                 botsailor_api_key: botsailorKey,
                 botsailor_phone_id: botsailorPhoneId,
                 shopify_store_domain: shopifyDomain,

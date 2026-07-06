@@ -2,28 +2,16 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 async function getTenantVoiceConfig(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  // Select all columns — voice_workflow_id stores newline-separated workflow IDs (no migration needed)
   const { data } = await supabase
     .from('tenants')
-    .select('voice_api_key, voice_base_url')
+    .select('voice_api_key, voice_base_url, voice_workflow_id')
     .eq('user_id', userId)
     .single()
-  // Attempt to read new multi-workflow columns separately — they may not exist yet if the
-  // user hasn't run the migration SQL yet. Use try/catch since Supabase queries are not
-  // native Promises and do not have a .catch() method.
-  let raw = ''
-  try {
-    const { data: wfData } = await supabase
-      .from('tenants')
-      .select('voice_workflow_ids, voice_workflow_id')
-      .eq('user_id', userId)
-      .single()
-    raw = (wfData as Record<string, string> | null)?.voice_workflow_ids
-      ?? (wfData as Record<string, string> | null)?.voice_workflow_id
-      ?? ''
-  } catch {
-    // columns don't exist yet — continue with empty workflow list
-  }
-  const workflowIds: string[] = raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : []
+
+  const raw: string = (data?.voice_workflow_id as string) ?? ''
+  const workflowIds: string[] = raw ? raw.split('\n').map((s: string) => s.trim()).filter(Boolean) : []
+
   return {
     apiKey: data?.voice_api_key ?? null,
     baseUrl: (data?.voice_base_url ?? 'https://voice.larynxai.in').replace(/\/$/, ''),
