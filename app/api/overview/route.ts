@@ -28,26 +28,25 @@ export async function GET() {
 
   // ── COD data ───────────────────────────────────────────────────────────────
   let codCount = 0
-  let revenueSaved = 0      // sum of shipping_charge on rejected/cancelled COD orders
-  let codRejectedCount = 0
+  let revenueSaved = 0
+  let codRejectedCount  = 0
+  let codConfirmedCount = 0
 
   try {
     // Total COD row count
     const { count } = await admin.from(codTable).select('*', { count: 'exact', head: true })
     codCount = count ?? 0
 
-    // Rejected COD = order confirm = 'false'  OR  status = 'rejected' / 'cancelled'
-    const { data: rejectedRows } = await admin
+    // Confirmed = order confirm = 'true', Rejected = 'false', Pending = null
+    const { data: allCodRows } = await admin
       .from(codTable)
-      .select('"order confirm", status, shipping_charge')
+      .select('"order confirm", shipping_charge')
 
-    if (rejectedRows) {
-      const rejected = rejectedRows.filter((r: Record<string, unknown>) =>
-        r['order confirm'] === 'false' ||
-        String(r['order confirm']).toLowerCase() === 'false' ||
-        ['rejected', 'cancelled', 'cancel'].includes(String(r.status ?? '').toLowerCase())
-      )
-      codRejectedCount = rejected.length
+    if (allCodRows) {
+      const rejected  = allCodRows.filter((r: Record<string, unknown>) => String(r['order confirm']) === 'false')
+      const confirmed = allCodRows.filter((r: Record<string, unknown>) => String(r['order confirm']) === 'true')
+      codRejectedCount  = rejected.length
+      codConfirmedCount = confirmed.length
       revenueSaved = rejected.reduce((s: number, r: Record<string, unknown>) => s + Number(r.shipping_charge ?? 0), 0)
     }
   } catch (_) { /* table not found — skip */ }
@@ -106,21 +105,35 @@ export async function GET() {
         // If zero matches (IDs stored don't match real runs), use all runs for this org
         const runs = filtered.length > 0 ? filtered : allRuns
 
+        // Track total talk-time in minutes for cost calculation
+        let totalMinutes = 0
         callStats.total = runs.length
         for (const r of runs) {
           const d = String(r.disposition ?? '')
-          if (d === 'end_call_tool' || d === 'user_hangup')       callStats.completed++
-          else if (d === 'user_idle_max_duration_exceeded')        callStats.no_answer++
-          else if (!d || d === 'null')                             callStats.in_progress++
-          else                                                     callStats.failed++
+          const secs = Number(r.call_duration_seconds ?? r.duration ?? 0)
+          if (d === 'end_call_tool' || d === 'user_hangup') {
+            callStats.completed++
+            totalMinutes += secs / 60
+          } else if (d === 'user_idle_max_duration_exceeded') {
+            callStats.no_answer++
+          } else if (!d || d === 'null') {
+            callStats.in_progress++
+          } else {
+            callStats.failed++
+          }
         }
+        // Store total minutes so revenue calc can use it
+        ;(callStats as Record<string, unknown>).total_minutes = Math.round(totalMinutes * 10) / 10
       }
     }
   } catch (_) { /* Dograh unavailable — use zero counts */ }
 
   // ── Revenue aggregates ─────────────────────────────────────────────────────
-  // Call cost savings: ₹50 per completed call (human agent cost avoided)
-  const callCostSavings = callStats.completed * 50
+  // Call cost savings: cost_per_minute × total talk-time minutes
+  // cost_per_minute stored in notification_prefs (default ₹5/min)
+  const costPerMin = Number(tenant?.notification_prefs?.call_cost_per_minute ?? 5)
+  const totalMinutes = Number((callStats as Record<string, unknown>).total_minutes ?? 0)
+  const callCostSavings = Math.round(totalMinutes * costPerMin)
   const totalNetImpact  = revenueMade + revenueSaved + callCostSavings
 
   return NextResponse.json({
@@ -132,12 +145,15 @@ export async function GET() {
     call_stats: callStats,
     // Revenue metrics
     revenue: {
-      made: revenueMade,                  // cart confirmed orders total_amount
-      saved: revenueSaved,                // rejected COD × shipping_charge
-      call_cost_savings: callCostSavings, // completed calls × ₹50
-      total_net: totalNetImpact,          // made + saved + call_savings
+      made: revenueMade,
+      saved: revenueSaved,
+      call_cost_savings: callCostSavings,
+      total_net: totalNetImpact,
+      cod_confirmed_count: codConfirmedCount,
       cod_rejected_count: codRejectedCount,
       cart_converted_count: cartConvertedCount,
+      cost_per_minute: costPerMin,
+      total_call_minutes: totalMinutes,
     },
   })
 }

@@ -260,6 +260,7 @@ export function ProfileTab() {
   // Integration fields
   const [voiceApiKey, setVoiceApiKey] = useState("")
   const [voiceBaseUrl, setVoiceBaseUrl] = useState("")
+  const [callCostPerMinute, setCallCostPerMinute] = useState("5")
   // Multi-workflow: stored as newline-separated string in tenant, array in UI
   const [workflowIds, setWorkflowIds] = useState<string[]>([])
   const [botsailorKey, setBotsailorKey] = useState("")
@@ -293,6 +294,7 @@ export function ProfileTab() {
     setPhone(tenant.phone ?? "")
     setVoiceApiKey(tenant.voice_api_key ?? "")
     setVoiceBaseUrl(tenant.voice_base_url ?? "")
+    setCallCostPerMinute(String(tenant.notification_prefs?.call_cost_per_minute ?? "5"))
     // voice_workflow_id stores newline-separated workflow IDs (reusing existing column)
     const raw: string = tenant.voice_workflow_id ?? ""
     setWorkflowIds(raw ? raw.split("\n").filter(Boolean) : [])
@@ -415,6 +417,18 @@ export function ProfileTab() {
                 </div>
                 <SecretField label="API Key" value={voiceApiKey} onChange={setVoiceApiKey} hint="Used for all call triggers and run retrieval" />
                 <TextField label="Base URL" value={voiceBaseUrl} onChange={setVoiceBaseUrl} hint="e.g. https://voice.larynxai.in" />
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Call Cost per Minute (₹)</p>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={callCostPerMinute}
+                    onChange={e => setCallCostPerMinute(e.target.value)}
+                    className="bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none w-32"
+                  />
+                  <p className="text-[11px] text-[#aeaeb2] mt-1">Used to calculate call cost savings vs. manual agent. Default: ₹5/min</p>
+                </div>
                 <WorkflowPicker
                   apiKey={voiceApiKey}
                   selectedIds={workflowIds}
@@ -581,6 +595,10 @@ export function ProfileTab() {
                 review_table_name: reviewTableName,
                 razorpay_key_id: razorpayKeyId,
                 razorpay_key_secret: razorpayKeySecret,
+                notification_prefs: {
+                  ...notifs,
+                  call_cost_per_minute: parseFloat(callCostPerMinute) || 5,
+                },
               }} />
             </div>
           </div>

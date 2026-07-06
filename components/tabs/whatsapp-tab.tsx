@@ -71,7 +71,6 @@ export function WhatsAppTab() {
   // Bump this to force SWR to re-fetch page 1 after a tab switch (avoids stale-cache no-fire)
   const [chatFetchKey, setChatFetchKey] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const chatListBottomRef = useRef<HTMLDivElement>(null)
   const CHATS_PER_PAGE = 50
 
   const needsConfig = !tenant?.botsailor_api_key
@@ -133,21 +132,22 @@ export function WhatsAppTab() {
     // search is client-side filtered so no reset needed
   }, [search])
 
-  // IntersectionObserver at bottom of chat list to trigger next page.
-  // Deliberately exclude chatsLoading from deps — check it inside the callback
-  // to avoid re-attaching the observer while a load is already in flight.
+  // Scroll-based pagination: when user scrolls within 120px of the bottom,
+  // increment chatPage. Guard with a ref so we don't double-fire while loading.
+  const loadingPageRef = useRef(false)
+  function handleChatListScroll(e: React.UIEvent<HTMLDivElement>) {
+    if (!hasMoreChats || loadingPageRef.current) return
+    const el = e.currentTarget
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) {
+      loadingPageRef.current = true
+      setChatPage(p => p + 1)
+    }
+  }
+
+  // Reset the guard once new chats have loaded
   useEffect(() => {
-    const el = chatListBottomRef.current
-    if (!el || !hasMoreChats) return
-    const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) {
-        setChatPage(p => p + 1)
-      }
-    }, { threshold: 0.1 })
-    obs.observe(el)
-    return () => obs.disconnect()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMoreChats, allChats.length])
+    loadingPageRef.current = false
+  }, [allChats.length])
 
   // Use allChats (accumulated) as the source of truth — never raw chatsData directly
   const chats = allChats
@@ -253,7 +253,7 @@ export function WhatsAppTab() {
 
           {/* Chat list */}
           {subTab === "chats" && (
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto" onScroll={handleChatListScroll}>
               {(chatsLoading || (chatPage === 1 && allChats.length === 0 && !waError)) ? (
                 [...Array(6)].map((_, i) => (
                   <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-black/[0.04]">
@@ -307,8 +307,7 @@ export function WhatsAppTab() {
                   </button>
                 )
               })}
-              {/* Scroll pagination sentinel */}
-              <div ref={chatListBottomRef} className="h-4 shrink-0" />
+              {/* Scroll pagination loading indicator */}
               {chatsLoading && chatPage > 1 && (
                 <div className="flex justify-center py-3">
                   <div className="w-5 h-5 border-2 border-[#0066cc] border-t-transparent rounded-full animate-spin" />

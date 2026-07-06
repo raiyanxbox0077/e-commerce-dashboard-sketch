@@ -17,8 +17,11 @@ interface RevenueData {
   saved: number
   call_cost_savings: number
   total_net: number
+  cod_confirmed_count: number
   cod_rejected_count: number
   cart_converted_count: number
+  cost_per_minute: number
+  total_call_minutes: number
 }
 
 interface OverviewData {
@@ -283,11 +286,11 @@ export function OverviewTab() {
             {
               label: "Call Cost Savings",
               value: callSavings,
-              sub: `${callCompleted} calls × ₹50 agent cost`,
+              sub: `${rev?.total_call_minutes ?? 0} mins × ₹${rev?.cost_per_minute ?? 5}/min`,
               icon: Zap,
               color: "#ff9500",
               bg: "bg-[#ff9500]/8",
-              desc: "AI handled vs. manual agent at ₹50/call",
+              desc: `AI handled vs. manual agent at ₹${rev?.cost_per_minute ?? 5}/min`,
             },
             {
               label: "Total Net Impact",
@@ -376,8 +379,8 @@ export function OverviewTab() {
           <p className="text-[14px] font-semibold text-[#1d1d1f] mb-0.5">Order Intelligence</p>
           <p className="text-[12px] text-[#6e6e73] mb-3">COD + Cart combined</p>
           {[
-            { label: "COD Confirmed",      value: (data?.cod_count ?? 0) - (rev?.cod_rejected_count ?? 0), color: "#34c759" },
-            { label: "COD Rejected",       value: rev?.cod_rejected_count ?? 0,                           color: "#ff3b30" },
+            { label: "COD Confirmed",      value: rev?.cod_confirmed_count ?? 0,  color: "#34c759" },
+            { label: "COD Rejected",       value: rev?.cod_rejected_count ?? 0,  color: "#ff3b30" },
             { label: "Cart Converted",     value: rev?.cart_converted_count ?? 0,                         color: "#0066cc" },
             { label: "Cart Not Responded", value: (data?.cart_count ?? 0) - (rev?.cart_converted_count ?? 0), color: "#ff9500" },
           ].map(s => (
