@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const { tenant } = useTenant()
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FAFAF8]">
+    <div className="flex h-screen overflow-hidden bg-surface">
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}

@@ -82,7 +82,7 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
         description: "Wallet Recharge",
         order_id: order.order_id,
         prefill: { method },
-        theme: { color: "#0066cc" },
+        theme: { color: "var(--info)" },
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           await fetch("/api/wallet/verify-payment", {
             method: "POST",
@@ -113,19 +113,19 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
   return (
     <div className="space-y-4">
       {/* Balance hero */}
-      <div className="bg-[#0066cc] rounded-2xl p-6 text-white">
+      <div className="bg-info rounded-2xl p-6 text-white">
         <div className="flex items-start justify-between mb-6">
           <div>
             <p className="text-[14px] text-white/70 mb-1">Available Balance</p>
             {isLoading ? (
-              <div className="h-10 w-40 bg-white/20 rounded-xl animate-pulse" />
+              <div className="h-10 w-40 bg-card/20 rounded-xl animate-pulse" />
             ) : (
               <p className="text-[40px] font-semibold tracking-tight leading-none">
                 &#8377;{balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
               </p>
             )}
           </div>
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-card/20 flex items-center justify-center">
             <Wallet className="w-6 h-6 text-white" />
           </div>
         </div>
@@ -136,22 +136,22 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
               &#8377;{transactions.filter(t => t.type === "debit").reduce((s, t) => s + t.amount, 0).toFixed(2)} spent
             </span>
           </div>
-          <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-            <div className="h-full bg-white rounded-full w-[15%]" />
+          <div className="h-1.5 bg-card/20 rounded-full overflow-hidden">
+            <div className="h-full bg-card rounded-full w-[15%]" />
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recharge card */}
-        <div className="bg-white rounded-2xl hairline p-5 space-y-5">
+        <div className="bg-card rounded-2xl hairline p-5 space-y-5">
           <div>
-            <p className="text-[15px] font-semibold text-[#1d1d1f]">Add Credits</p>
-            <p className="text-[12px] text-[#6e6e73] mt-0.5">Powered by Razorpay — &#8377;1 = 1 credit</p>
+            <p className="text-[15px] font-semibold text-ink">Add Credits</p>
+            <p className="text-[12px] text-mute mt-0.5">Powered by Razorpay — &#8377;1 = 1 credit</p>
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Quick select</p>
+            <p className="text-[11px] font-semibold text-mute uppercase tracking-wider mb-2">Quick select</p>
             <div className="grid grid-cols-3 gap-2">
               {QUICK_AMOUNTS.map(a => (
                 <button
@@ -159,7 +159,7 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
                   onClick={() => { setAmount(a); setCustomAmount("") }}
                   className={cn(
                     "py-2.5 rounded-xl text-[14px] font-semibold transition-all active:scale-95",
-                    amount === a ? "bg-[#0066cc] text-white" : "bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#ebebf0]"
+                    amount === a ? "bg-info text-white" : "bg-surface text-ink hover:bg-hair2"
                   )}
                 >
                   &#8377;{a.toLocaleString("en-IN")}
@@ -169,22 +169,22 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Custom amount</p>
-            <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-4 py-3">
-              <span className="text-[15px] font-medium text-[#6e6e73]">&#8377;</span>
+            <p className="text-[11px] font-semibold text-mute uppercase tracking-wider mb-2">Custom amount</p>
+            <div className="flex items-center gap-2 bg-surface rounded-xl px-4 py-3">
+              <span className="text-[15px] font-medium text-mute">&#8377;</span>
               <input
                 type="number"
                 min="10"
                 value={customAmount}
                 onChange={e => { setCustomAmount(e.target.value); setAmount(null) }}
                 placeholder="Enter amount (min ₹10)"
-                className="bg-transparent text-[15px] text-[#1d1d1f] outline-none w-full placeholder:text-[#6e6e73]"
+                className="bg-transparent text-[15px] text-ink outline-none w-full placeholder:text-mute"
               />
             </div>
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Payment method</p>
+            <p className="text-[11px] font-semibold text-mute uppercase tracking-wider mb-2">Payment method</p>
             <div className="flex gap-2">
               {PAYMENT_METHODS.map(m => (
                 <button
@@ -192,18 +192,18 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
                   onClick={() => setMethod(m.id)}
                   className={cn(
                     "flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border transition-all",
-                    method === m.id ? "border-[#0066cc] bg-[#0066cc]/5" : "border-black/[0.08] hover:border-black/20"
+                    method === m.id ? "border-info bg-info/5" : "border-ink/[0.08] hover:border-ink/20"
                   )}
                 >
-                  <m.icon className={cn("w-5 h-5", method === m.id ? "text-[#0066cc]" : "text-[#6e6e73]")} />
-                  <span className={cn("text-[11px] font-medium", method === m.id ? "text-[#0066cc]" : "text-[#6e6e73]")}>{m.label}</span>
+                  <m.icon className={cn("w-5 h-5", method === m.id ? "text-info" : "text-mute")} />
+                  <span className={cn("text-[11px] font-medium", method === m.id ? "text-info" : "text-mute")}>{m.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
           {rechargeError && (
-            <div className="flex items-start gap-2 bg-[#fff3f3] border border-[#ffcdd2] rounded-xl px-3.5 py-3 text-[13px] text-[#cc0000]">
+            <div className="flex items-start gap-2 bg-dangertint border border-dangertint rounded-xl px-3.5 py-3 text-[13px] text-dangertext">
               <span className="shrink-0 mt-0.5">&#9888;</span>
               <span>{rechargeError}</span>
             </div>
@@ -215,8 +215,8 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
             className={cn(
               "w-full py-3.5 rounded-full text-[15px] font-semibold transition-all active:scale-[0.97]",
               finalAmount >= 10 && !recharging
-                ? recharged ? "bg-[#34c759] text-white" : "bg-[#0066cc] text-white"
-                : "bg-[#f5f5f7] text-[#c7c7cc] cursor-not-allowed"
+                ? recharged ? "bg-success text-white" : "bg-info text-white"
+                : "bg-surface text-faint cursor-not-allowed"
             )}
           >
             {recharged ? (
@@ -238,12 +238,12 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
         </div>
 
         {/* Transaction history */}
-        <div className="bg-white rounded-2xl hairline overflow-hidden">
-          <div className="px-5 py-4 border-b border-black/[0.06]">
-            <p className="text-[15px] font-semibold text-[#1d1d1f]">Transaction History</p>
-            <p className="text-[12px] text-[#6e6e73]">Recent credits and debits</p>
+        <div className="bg-card rounded-2xl hairline overflow-hidden">
+          <div className="px-5 py-4 border-b border-ink/[0.06]">
+            <p className="text-[15px] font-semibold text-ink">Transaction History</p>
+            <p className="text-[12px] text-mute">Recent credits and debits</p>
           </div>
-          <div className="divide-y divide-black/[0.04] overflow-y-auto" style={{ maxHeight: "340px" }}>
+          <div className="divide-y divide-ink/[0.04] overflow-y-auto" style={{ maxHeight: "340px" }}>
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center gap-3 px-5 py-3.5">
@@ -256,25 +256,25 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
                 </div>
               ))
             ) : transactions.length === 0 ? (
-              <div className="text-center py-10 text-[13px] text-[#6e6e73]">No transactions yet</div>
+              <div className="text-center py-10 text-[13px] text-mute">No transactions yet</div>
             ) : (
               transactions.map(t => (
                 <div key={t.id} className="flex items-center gap-3 px-5 py-3.5">
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                    t.type === "credit" ? "bg-[#34c759]/10" : "bg-[#ff3b30]/10"
+                    t.type === "credit" ? "bg-success/10" : "bg-danger/10"
                   )}>
                     {t.type === "credit"
-                      ? <ArrowDownLeft className="w-4 h-4 text-[#34c759]" />
-                      : <ArrowUpRight className="w-4 h-4 text-[#ff3b30]" />}
+                      ? <ArrowDownLeft className="w-4 h-4 text-success" />
+                      : <ArrowUpRight className="w-4 h-4 text-danger" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[#1d1d1f] truncate">{t.description}</p>
-                    <p className="text-[11px] text-[#6e6e73]">
+                    <p className="text-[13px] font-medium text-ink truncate">{t.description}</p>
+                    <p className="text-[11px] text-mute">
                       {new Date(t.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
                     </p>
                   </div>
-                  <p className={cn("text-[14px] font-semibold shrink-0", t.type === "credit" ? "text-[#34c759]" : "text-[#ff3b30]")}>
+                  <p className={cn("text-[14px] font-semibold shrink-0", t.type === "credit" ? "text-success" : "text-danger")}>
                     {t.type === "credit" ? "+" : "−"}&#8377;{t.amount.toFixed(2)}
                   </p>
                 </div>

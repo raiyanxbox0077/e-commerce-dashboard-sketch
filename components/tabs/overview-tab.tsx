@@ -108,30 +108,30 @@ function KpiCard({
 
   return (
     <div
-      className="anim-fade-slide bg-white rounded-[14px] p-5 border border-[#dddddd] flex flex-col gap-2 relative overflow-hidden hover:airbnb-shadow transition-shadow"
+      className="anim-fade-slide bg-card rounded-[14px] p-5 border border-hairline flex flex-col gap-2 relative overflow-hidden hover:airbnb-shadow transition-shadow"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between">
-        <p className="text-[12px] font-500 text-[#6a6a6a] uppercase tracking-wider">{label}</p>
+        <p className="text-[12px] font-500 text-mute uppercase tracking-wider">{label}</p>
         <div className={cn("w-7 h-7 rounded-[8px] flex items-center justify-center", iconBg)}>
           <Icon className={cn("w-3.5 h-3.5", iconColor)} />
         </div>
       </div>
       <div>
         <p className={cn(
-          "text-[28px] font-semibold text-[#222222] tracking-tight leading-none tabular",
-          isLoading && "text-[#dddddd]"
+          "text-[28px] font-semibold text-ink tracking-tight leading-none tabular",
+          isLoading && "text-hairline"
         )}>
           {isLoading ? "—" : display}
         </p>
-        {sub && <p className="text-[12px] text-[#929292] mt-1.5">{sub}</p>}
+        {sub && <p className="text-[12px] text-faint mt-1.5">{sub}</p>}
       </div>
       {trend !== undefined && (
         <div className={cn(
           "inline-flex items-center gap-1 text-[11px] font-medium w-fit px-2 py-0.5 rounded-full border",
           isUp
-            ? "text-[#00a699] border-[#00a699]/20 bg-[#00a699]/5"
-            : "text-[#c13515] border-[#c13515]/20 bg-[#c13515]/5"
+            ? "text-teal border-teal/20 bg-teal/5"
+            : "text-dangertext border-dangertext/20 bg-dangertext/5"
         )}>
           {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
           {Math.abs(trend)}%
@@ -144,8 +144,8 @@ function KpiCard({
 function LiveDot() {
   return (
     <span className="relative inline-flex items-center justify-center w-2.5 h-2.5">
-      <span className="anim-ripple absolute inline-flex w-full h-full rounded-full bg-[#00a699]" />
-      <span className="anim-pulse-live relative inline-flex rounded-full h-2 w-2 bg-[#00a699]" />
+      <span className="anim-ripple absolute inline-flex w-full h-full rounded-full bg-teal" />
+      <span className="anim-pulse-live relative inline-flex rounded-full h-2 w-2 bg-teal" />
     </span>
   )
 }
@@ -178,16 +178,16 @@ function FunnelBar({ label, value, max, color, delay = 0 }: FunnelBarProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[13px] text-[#3f3f3f]">{label}</span>
-        <span className="text-[13px] font-semibold text-[#222222] tabular">{value.toLocaleString("en-IN")}</span>
+        <span className="text-[13px] text-body">{label}</span>
+        <span className="text-[13px] font-semibold text-ink tabular">{value.toLocaleString("en-IN")}</span>
       </div>
-      <div className="h-1.5 bg-[#f2f2f2] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-surface2 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full"
           style={{ width: `${width}%`, backgroundColor: color, transition: "width 0.8s cubic-bezier(0.22, 1, 0.36, 1)" }}
         />
       </div>
-      <p className="text-[11px] text-[#aeaeb2] mt-1">{pct}%</p>
+      <p className="text-[11px] text-faint mt-1">{pct}%</p>
     </div>
   )
 }
@@ -228,39 +228,39 @@ export function OverviewTab() {
         <KpiCard
           label="Total Calls" rawValue={callTotal}
           sub="Dograh workflows"
-          icon={PhoneCall} iconColor="text-[#222222]" iconBg="bg-[#f2f2f2]"
-          accentColor="#222222" delay={0} isLoading={isLoading}
+          icon={PhoneCall} iconColor="text-ink" iconBg="bg-surface2"
+          accentColor="var(--ink)" delay={0} isLoading={isLoading}
         />
         <KpiCard
           label="COD Orders" rawValue={data?.cod_count ?? 0}
           sub="In Supabase"
-          icon={CheckCircle2} iconColor="text-[#00a699]" iconBg="bg-[#00a699]/10"
-          accentColor="#00a699" delay={60} isLoading={isLoading}
+          icon={CheckCircle2} iconColor="text-teal" iconBg="bg-teal/10"
+          accentColor="var(--teal)" delay={60} isLoading={isLoading}
         />
         <KpiCard
           label="Abandoned Carts" rawValue={data?.cart_count ?? 0}
           sub="Outreach queue"
-          icon={ShoppingBag} iconColor="text-[#ff385c]" iconBg="bg-[#ff385c]/10"
-          accentColor="#ff385c" delay={120} isLoading={isLoading}
+          icon={ShoppingBag} iconColor="text-primary" iconBg="bg-primary/10"
+          accentColor="var(--primary)" delay={120} isLoading={isLoading}
         />
         <KpiCard
           label="Call Success" rawValue={callSuccessRate}
           suffix="%" sub={`${callCompleted} completed`}
-          icon={TrendingUp} iconColor="text-[#00a699]" iconBg="bg-[#00a699]/10"
-          accentColor="#00a699" delay={180} isLoading={isLoading}
+          icon={TrendingUp} iconColor="text-teal" iconBg="bg-teal/10"
+          accentColor="var(--teal)" delay={180} isLoading={isLoading}
         />
         <KpiCard
           label="Wallet Balance" rawValue={data?.wallet_balance ?? 0}
           sub={isLoading ? "" : `₹${(data?.spent_this_month ?? 0).toFixed(0)} spent`}
-          icon={Wallet} iconColor="text-[#ff385c]" iconBg="bg-[#ff385c]/10"
-          accentColor="#ff385c" delay={240} isLoading={isLoading}
+          icon={Wallet} iconColor="text-primary" iconBg="bg-primary/10"
+          accentColor="var(--primary)" delay={240} isLoading={isLoading}
           formatValue={fmtRs}
         />
         <KpiCard
           label="Net Revenue Impact" rawValue={totalNet}
           sub="Made + Saved"
-          icon={IndianRupee} iconColor="text-[#222222]" iconBg="bg-[#f2f2f2]"
-          accentColor="#222222" delay={300} isLoading={isLoading}
+          icon={IndianRupee} iconColor="text-ink" iconBg="bg-surface2"
+          accentColor="var(--ink)" delay={300} isLoading={isLoading}
           formatValue={fmtRs}
         />
         <KpiCard
@@ -268,9 +268,9 @@ export function OverviewTab() {
           rawValue={waRevenue}
           sub={waConfigured ? `${waOrderCount} orders via WA-` : "Connect Shopify"}
           icon={Store}
-          iconColor="text-[#00a699]"
-          iconBg="bg-[#00a699]/10"
-          accentColor="#00a699"
+          iconColor="text-teal"
+          iconBg="bg-teal/10"
+          accentColor="var(--teal)"
           delay={360}
           isLoading={isLoading}
           formatValue={fmtRs}
@@ -279,13 +279,13 @@ export function OverviewTab() {
 
       {/* ── Revenue Impact strip ─────────────────────────────────────────────── */}
       <div
-        className="anim-fade-slide bg-white rounded-[14px] border border-[#dddddd] p-5"
+        className="anim-fade-slide bg-card rounded-[14px] border border-hairline p-5"
         style={{ animationDelay: "360ms" }}
       >
         <div className="flex items-center gap-2 mb-4">
-          <BadgeIndianRupee className="w-4 h-4 text-[#ff385c]" />
-          <p className="text-[14px] font-semibold text-[#222222]">Revenue Impact Breakdown</p>
-          <div className="ml-auto flex items-center gap-1.5 text-[11px] text-[#00a699] font-medium">
+          <BadgeIndianRupee className="w-4 h-4 text-primary" />
+          <p className="text-[14px] font-semibold text-ink">Revenue Impact Breakdown</p>
+          <div className="ml-auto flex items-center gap-1.5 text-[11px] text-teal font-medium">
             <LiveDot />
             <span>Live</span>
           </div>
@@ -297,8 +297,8 @@ export function OverviewTab() {
               value: revenueMade,
               sub: `${rev?.cart_converted_count ?? 0} cart orders confirmed`,
               icon: TrendingUp,
-              color: "#34c759",
-              bg: "bg-[#34c759]/8",
+              color: "var(--success)",
+              bg: "bg-success/8",
               desc: "Confirmed cart orders (call/WA converted)",
             },
             {
@@ -306,8 +306,8 @@ export function OverviewTab() {
               value: revenueSaved,
               sub: `${rev?.cod_rejected_count ?? 0} COD rejections avoided`,
               icon: ShieldCheck,
-              color: "#0066cc",
-              bg: "bg-[#0066cc]/8",
+              color: "var(--info)",
+              bg: "bg-info/8",
               desc: "Rejected COD × shipping cost avoided",
             },
             {
@@ -315,8 +315,8 @@ export function OverviewTab() {
               value: callSavings,
               sub: `${rev?.total_call_minutes ?? 0} mins × ₹${rev?.cost_per_minute ?? 5}/min`,
               icon: Zap,
-              color: "#ff9500",
-              bg: "bg-[#ff9500]/8",
+              color: "var(--warn)",
+              bg: "bg-warn/8",
               desc: `AI handled vs. manual agent at ₹${rev?.cost_per_minute ?? 5}/min`,
             },
             {
@@ -324,8 +324,8 @@ export function OverviewTab() {
               value: totalNet,
               sub: "Made + Saved + Calls",
               icon: IndianRupee,
-              color: "#af52de",
-              bg: "bg-[#af52de]/8",
+              color: "var(--purple)",
+              bg: "bg-purple/8",
               desc: "Combined money made and losses avoided",
             },
           ].map((item, i) => {
@@ -333,20 +333,20 @@ export function OverviewTab() {
             return (
               <div
                 key={item.label}
-                className="rounded-[8px] p-4 bg-[#f7f7f7] border border-[#ebebeb]"
+                className="rounded-[8px] p-4 bg-surface border border-hair2"
                 style={{ animationDelay: `${360 + i * 50}ms` }}
               >
                 <div className="flex items-center gap-2 mb-3">
                   <item.icon className="w-3.5 h-3.5" style={{ color: item.color }} />
-                  <p className="text-[11px] font-semibold text-[#6a6a6a] uppercase tracking-wider">{item.label}</p>
+                  <p className="text-[11px] font-semibold text-mute uppercase tracking-wider">{item.label}</p>
                 </div>
                 <p className={cn(
                   "text-[22px] font-semibold tracking-tight tabular mb-1",
-                  isLoading && "text-[#dddddd]"
+                  isLoading && "text-hairline"
                 )} style={{ color: item.color }}>
                   {isLoading ? "—" : fmtRs(animated)}
                 </p>
-                <p className="text-[11px] text-[#929292]">{item.sub}</p>
+                <p className="text-[11px] text-faint">{item.sub}</p>
               </div>
             )
           })}
@@ -356,36 +356,36 @@ export function OverviewTab() {
       {/* ── Shopify WA Revenue strip (only shown when configured) ───────────── */}
       {waConfigured && (
         <div
-          className="anim-fade-slide bg-white rounded-[14px] border border-[#dddddd] p-5"
+          className="anim-fade-slide bg-card rounded-[14px] border border-hairline p-5"
           style={{ animationDelay: "390ms" }}
         >
           <div className="flex items-center gap-2 mb-4">
-            <Store className="w-4 h-4 text-[#00a699]" />
-            <p className="text-[14px] font-semibold text-[#222222]">WhatsApp → Shopify Revenue</p>
-            <span className="ml-auto text-[11px] font-medium bg-[#95bf47]/10 text-[#5a8a00] px-2 py-0.5 rounded-full">
+            <Store className="w-4 h-4 text-teal" />
+            <p className="text-[14px] font-semibold text-ink">WhatsApp → Shopify Revenue</p>
+            <span className="ml-auto text-[11px] font-medium bg-shopify/10 text-shopifytext px-2 py-0.5 rounded-full">
               WA- discount codes
             </span>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-[#f7f7f7] rounded-[8px] p-4 border border-[#ebebeb]">
-              <p className="text-[11px] text-[#6a6a6a] mb-1 uppercase tracking-wider font-medium">Total Revenue</p>
-              <p className="text-[20px] font-semibold text-[#222222]">{fmtRs(waRevenue)}</p>
-              <p className="text-[11px] text-[#929292] mt-1">from WA-attributed orders</p>
+            <div className="bg-surface rounded-[8px] p-4 border border-hair2">
+              <p className="text-[11px] text-mute mb-1 uppercase tracking-wider font-medium">Total Revenue</p>
+              <p className="text-[20px] font-semibold text-ink">{fmtRs(waRevenue)}</p>
+              <p className="text-[11px] text-faint mt-1">from WA-attributed orders</p>
             </div>
-            <div className="bg-[#f7f7f7] rounded-[8px] p-4 border border-[#ebebeb]">
-              <p className="text-[11px] text-[#6a6a6a] mb-1 uppercase tracking-wider font-medium">Orders</p>
-              <p className="text-[20px] font-semibold text-[#222222]">{waOrderCount}</p>
-              <p className="text-[11px] text-[#929292] mt-1">paid orders via WhatsApp</p>
+            <div className="bg-surface rounded-[8px] p-4 border border-hair2">
+              <p className="text-[11px] text-mute mb-1 uppercase tracking-wider font-medium">Orders</p>
+              <p className="text-[20px] font-semibold text-ink">{waOrderCount}</p>
+              <p className="text-[11px] text-faint mt-1">paid orders via WhatsApp</p>
             </div>
-            <div className="bg-[#f7f7f7] rounded-[8px] p-4 border border-[#ebebeb]">
-              <p className="text-[11px] text-[#6a6a6a] mb-1 uppercase tracking-wider font-medium">Avg Order Value</p>
-              <p className="text-[20px] font-semibold text-[#222222]">{fmtRs(shopifyRevData?.avg_order_value ?? 0)}</p>
-              <p className="text-[11px] text-[#929292] mt-1">per WA-attributed order</p>
+            <div className="bg-surface rounded-[8px] p-4 border border-hair2">
+              <p className="text-[11px] text-mute mb-1 uppercase tracking-wider font-medium">Avg Order Value</p>
+              <p className="text-[20px] font-semibold text-ink">{fmtRs(shopifyRevData?.avg_order_value ?? 0)}</p>
+              <p className="text-[11px] text-faint mt-1">per WA-attributed order</p>
             </div>
           </div>
           {(shopifyRevData?.monthly?.length ?? 0) > 0 && (
             <div className="mt-4">
-              <p className="text-[12px] text-[#6e6e73] mb-2">Monthly trend</p>
+              <p className="text-[12px] text-mute mb-2">Monthly trend</p>
               <div className="flex items-end gap-1.5 h-16">
                 {(() => {
                   const months = shopifyRevData!.monthly!
@@ -393,11 +393,11 @@ export function OverviewTab() {
                   return months.map(m => (
                     <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
                       <div
-                        className="w-full rounded-t bg-[#95bf47]/70 min-h-[4px]"
+                        className="w-full rounded-t bg-shopify/70 min-h-[4px]"
                         style={{ height: `${Math.max(4, (m.revenue / maxVal) * 52)}px` }}
                         title={`${m.month}: ${fmtRs(m.revenue)}`}
                       />
-                      <p className="text-[9px] text-[#aeaeb2]">{m.month.slice(5)}</p>
+                      <p className="text-[9px] text-faint">{m.month.slice(5)}</p>
                     </div>
                   ))
                 })()}
@@ -405,7 +405,7 @@ export function OverviewTab() {
             </div>
           )}
           {!waConfigured && (
-            <p className="text-[12px] text-[#6e6e73] mt-2">
+            <p className="text-[12px] text-mute mt-2">
               Add your Shopify store domain and admin token in <strong>Settings → Integrations</strong> to enable this panel.
             </p>
           )}
@@ -416,32 +416,32 @@ export function OverviewTab() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Conversion Funnel */}
         <div
-          className="anim-fade-slide bg-white rounded-[14px] border border-[#dddddd] p-5"
+          className="anim-fade-slide bg-card rounded-[14px] border border-hairline p-5"
           style={{ animationDelay: "420ms" }}
         >
-          <p className="text-[14px] font-semibold text-[#222222] mb-0.5">Conversion Funnel</p>
-          <p className="text-[12px] text-[#6a6a6a] mb-5">Calls → COD → Cart confirmed</p>
+          <p className="text-[14px] font-semibold text-ink mb-0.5">Conversion Funnel</p>
+          <p className="text-[12px] text-mute mb-5">Calls → COD → Cart confirmed</p>
           <div className="space-y-4">
-            <FunnelBar label="Total Calls" value={callTotal} max={funnelMax} color="#0066cc" delay={420} />
-            <FunnelBar label="Calls Completed" value={callCompleted} max={funnelMax} color="#5ac8fa" delay={460} />
-            <FunnelBar label="Calls Failed" value={callFailed} max={funnelMax} color="#ff3b30" delay={500} />
-            <FunnelBar label="COD Orders" value={data?.cod_count ?? 0} max={funnelMax} color="#34c759" delay={540} />
-            <FunnelBar label="Abandoned Carts" value={data?.cart_count ?? 0} max={funnelMax} color="#af52de" delay={580} />
+            <FunnelBar label="Total Calls" value={callTotal} max={funnelMax} color="var(--info)" delay={420} />
+            <FunnelBar label="Calls Completed" value={callCompleted} max={funnelMax} color="var(--info)" delay={460} />
+            <FunnelBar label="Calls Failed" value={callFailed} max={funnelMax} color="var(--danger)" delay={500} />
+            <FunnelBar label="COD Orders" value={data?.cod_count ?? 0} max={funnelMax} color="var(--success)" delay={540} />
+            <FunnelBar label="Abandoned Carts" value={data?.cart_count ?? 0} max={funnelMax} color="var(--purple)" delay={580} />
           </div>
         </div>
 
         {/* Call quality */}
         <div
-          className="anim-fade-slide bg-white rounded-[14px] border border-[#dddddd] p-5 space-y-3"
+          className="anim-fade-slide bg-card rounded-[14px] border border-hairline p-5 space-y-3"
           style={{ animationDelay: "480ms" }}
         >
-          <p className="text-[14px] font-semibold text-[#222222] mb-0.5">Call Quality</p>
-          <p className="text-[12px] text-[#6a6a6a] mb-3">Outcome breakdown</p>
+          <p className="text-[14px] font-semibold text-ink mb-0.5">Call Quality</p>
+          <p className="text-[12px] text-mute mb-3">Outcome breakdown</p>
           {[
-            { label: "Completed",   value: callCompleted,               color: "#34c759", icon: CheckCircle2 },
-            { label: "No Answer",   value: callNoAnswer,                color: "#ff9500", icon: AlertCircle  },
-            { label: "Failed",      value: callFailed,                  color: "#ff3b30", icon: XCircle      },
-            { label: "In Progress", value: data?.call_stats?.in_progress ?? 0, color: "#0066cc", icon: PhoneCall },
+            { label: "Completed",   value: callCompleted,               color: "var(--success)", icon: CheckCircle2 },
+            { label: "No Answer",   value: callNoAnswer,                color: "var(--warn)", icon: AlertCircle  },
+            { label: "Failed",      value: callFailed,                  color: "var(--danger)", icon: XCircle      },
+            { label: "In Progress", value: data?.call_stats?.in_progress ?? 0, color: "var(--info)", icon: PhoneCall },
           ].map(s => (
             <div key={s.label} className="flex items-center gap-3">
               <div
@@ -450,29 +450,29 @@ export function OverviewTab() {
               >
                 <s.icon className="w-4 h-4" style={{ color: s.color }} />
               </div>
-              <p className="text-[13px] text-[#3f3f3f] flex-1">{s.label}</p>
-              <p className="text-[15px] font-semibold text-[#222222] tabular">{s.value.toLocaleString("en-IN")}</p>
+              <p className="text-[13px] text-body flex-1">{s.label}</p>
+              <p className="text-[15px] font-semibold text-ink tabular">{s.value.toLocaleString("en-IN")}</p>
             </div>
           ))}
         </div>
 
         {/* COD vs Cart quick stats */}
         <div
-          className="anim-fade-slide bg-white rounded-[14px] border border-[#dddddd] p-5 space-y-3"
+          className="anim-fade-slide bg-card rounded-[14px] border border-hairline p-5 space-y-3"
           style={{ animationDelay: "540ms" }}
         >
-          <p className="text-[14px] font-semibold text-[#222222] mb-0.5">Order Intelligence</p>
-          <p className="text-[12px] text-[#6a6a6a] mb-3">COD + Cart combined</p>
+          <p className="text-[14px] font-semibold text-ink mb-0.5">Order Intelligence</p>
+          <p className="text-[12px] text-mute mb-3">COD + Cart combined</p>
           {[
-            { label: "COD Confirmed",      value: rev?.cod_confirmed_count ?? 0,  color: "#34c759" },
-            { label: "COD Rejected",       value: rev?.cod_rejected_count ?? 0,  color: "#ff3b30" },
-            { label: "Cart Converted",     value: rev?.cart_converted_count ?? 0,                         color: "#0066cc" },
-            { label: "Cart Not Responded", value: (data?.cart_count ?? 0) - (rev?.cart_converted_count ?? 0), color: "#ff9500" },
+            { label: "COD Confirmed",      value: rev?.cod_confirmed_count ?? 0,  color: "var(--success)" },
+            { label: "COD Rejected",       value: rev?.cod_rejected_count ?? 0,  color: "var(--danger)" },
+            { label: "Cart Converted",     value: rev?.cart_converted_count ?? 0,                         color: "var(--info)" },
+            { label: "Cart Not Responded", value: (data?.cart_count ?? 0) - (rev?.cart_converted_count ?? 0), color: "var(--warn)" },
           ].map(s => (
             <div key={s.label} className="flex items-center gap-3">
               <div className="w-2 h-8 rounded-full shrink-0" style={{ background: s.color }} />
-              <p className="text-[13px] text-[#3f3f3f] flex-1">{s.label}</p>
-              <p className="text-[15px] font-semibold text-[#222222] tabular">
+              <p className="text-[13px] text-body flex-1">{s.label}</p>
+              <p className="text-[15px] font-semibold text-ink tabular">
                 {Math.max(0, s.value).toLocaleString("en-IN")}
               </p>
             </div>
@@ -482,43 +482,43 @@ export function OverviewTab() {
 
       {/* ── Recent Wallet Activity ───────────────────────────────────────────── */}
       <div
-        className="anim-fade-slide bg-white rounded-[14px] border border-[#dddddd] overflow-hidden"
+        className="anim-fade-slide bg-card rounded-[14px] border border-hairline overflow-hidden"
         style={{ animationDelay: "600ms" }}
       >
-        <div className="px-5 py-4 border-b border-[#ebebeb] flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-hair2 flex items-center justify-between">
           <div>
-            <p className="text-[14px] font-semibold text-[#222222]">Recent Wallet Activity</p>
-            <p className="text-[12px] text-[#6a6a6a]">Credits and debits</p>
+            <p className="text-[14px] font-semibold text-ink">Recent Wallet Activity</p>
+            <p className="text-[12px] text-mute">Credits and debits</p>
           </div>
-          <p className="text-[13px] font-semibold text-[#222222] tabular">
+          <p className="text-[13px] font-semibold text-ink tabular">
             {fmtRsDecimal(data?.wallet_balance ?? 0)}
           </p>
         </div>
-        <div className="divide-y divide-[#ebebeb]">
+        <div className="divide-y divide-hair2">
           {recentTransactions.length === 0 ? (
-            <div className="px-5 py-10 text-center text-[13px] text-[#6a6a6a]">
-              <Wallet className="w-8 h-8 text-[#dddddd] mx-auto mb-2" />
+            <div className="px-5 py-10 text-center text-[13px] text-mute">
+              <Wallet className="w-8 h-8 text-hairline mx-auto mb-2" />
               No transactions yet — recharge your wallet to get started
             </div>
           ) : recentTransactions.map((txn) => (
-            <div key={txn.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-[#f7f7f7] transition-colors">
+            <div key={txn.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-surface transition-colors">
               <div className={cn(
                 "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                txn.type === "credit" ? "bg-[#34c759]/10" : "bg-[#ff3b30]/10"
+                txn.type === "credit" ? "bg-success/10" : "bg-danger/10"
               )}>
                 {txn.type === "credit"
-                  ? <ArrowDownLeft className="w-4 h-4 text-[#34c759]" />
-                  : <ArrowUpRight className="w-4 h-4 text-[#ff3b30]" />}
+                  ? <ArrowDownLeft className="w-4 h-4 text-success" />
+                  : <ArrowUpRight className="w-4 h-4 text-danger" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-[#222222] truncate">
+                <p className="text-[13px] font-medium text-ink truncate">
                   {txn.description || (txn.type === "credit" ? "Wallet Recharge" : "Usage Debit")}
                 </p>
-                <p className="text-[11px] text-[#6a6a6a]">{timeAgo(txn.created_at)}</p>
+                <p className="text-[11px] text-mute">{timeAgo(txn.created_at)}</p>
               </div>
               <p className={cn(
                 "text-[14px] font-bold tabular shrink-0",
-                txn.type === "credit" ? "text-[#34c759]" : "text-[#ff3b30]"
+                txn.type === "credit" ? "text-success" : "text-danger"
               )}>
                 {txn.type === "credit" ? "+" : "−"}₹{Number(txn.amount).toLocaleString("en-IN")}
               </p>
