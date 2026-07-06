@@ -22,7 +22,7 @@ export async function GET() {
   })
   const raw = await res.json()
 
-  // Dograh returns a top-level array of { workflow_id, name, status, ... }
+  // Dograh returns a top-level array of { id, name, status, total_runs, ... }
   const workflows = Array.isArray(raw) ? raw : (raw?.workflows ?? raw?.data ?? [])
   return NextResponse.json({ workflows }, { status: res.status })
 }

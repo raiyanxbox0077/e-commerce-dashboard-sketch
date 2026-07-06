@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from "swr"
-import { PhoneCall, ShoppingBag, TrendingUp, CheckCircle2, XCircle, AlertCircle, Wallet, ArrowUpRight, ArrowDownLeft } from "lucide-react"
+import { PhoneCall, ShoppingBag, TrendingUp, TrendingDown, CheckCircle2, XCircle, AlertCircle, Wallet, ArrowUpRight, ArrowDownLeft } from "lucide-react"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 

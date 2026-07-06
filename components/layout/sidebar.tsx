@@ -34,8 +34,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "calls", label: "Calls", icon: PhoneCall },
-  { id: "shopify", label: "Shopify", icon: ShoppingBag },
+  { id: "calls",    label: "Calls",    icon: PhoneCall },
+  { id: "shopify",  label: "Shopify",  icon: ShoppingBag },
   { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
 ]
 

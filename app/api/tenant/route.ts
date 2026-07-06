@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -6,13 +6,30 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('tenants')
     .select('*')
     .eq('user_id', user.id)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Auto-create tenant row if it doesn't exist yet (e.g. trigger not set up)
+  if (error?.code === 'PGRST116' || !data) {
+    const admin = createAdminClient()
+    const { data: created, error: createError } = await admin
+      .from('tenants')
+      .insert({
+        user_id: user.id,
+        email: user.email,
+        name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '',
+      })
+      .select()
+      .single()
+    if (createError) return NextResponse.json({ error: createError.message }, { status: 500 })
+    data = created
+  } else if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
   return NextResponse.json(data)
 }
 
@@ -32,8 +49,10 @@ export async function PATCH(req: Request) {
     // shopify / client supabase
     'shopify_domain', 'shopify_admin_token', 'shopify_store_domain',
     'client_supabase_url', 'client_supabase_anon_key',
+    // voice workflows — newline-separated IDs stored in a single column
+    'voice_workflow_id',
     // table name overrides
-    'cod_table_name', 'cart_table_name',
+    'cod_table_name', 'cart_table_name', 'support_table_name', 'review_table_name',
     // razorpay
     'razorpay_key_id', 'razorpay_key_secret',
     // notifications
@@ -44,12 +63,30 @@ export async function PATCH(req: Request) {
     if (body[key] !== undefined) updates[key] = body[key]
   }
 
-  const { data, error } = await supabase
+  // Columns that may not exist yet in older deployments — silently drop them if Postgres
+  // returns a "column does not exist" error, then retry without those columns.
+  const newColumns = ['support_table_name', 'review_table_name', 'voice_workflow_id']
+
+  let payload = { ...updates, updated_at: new Date().toISOString() }
+  let { data, error } = await supabase
     .from('tenants')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('user_id', user.id)
     .select()
     .single()
+
+  if (error?.message?.includes('column') && error.message.includes('does not exist')) {
+    // Strip any of the new columns that don't exist yet and retry once
+    for (const col of newColumns) delete payload[col]
+    const retry = await supabase
+      .from('tenants')
+      .update(payload)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+    data = retry.data
+    error = retry.error
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)

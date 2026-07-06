@@ -2,12 +2,117 @@
 
 import { useState, useEffect } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
-import { User, Key, Bell, Shield, Building2, Eye, EyeOff, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react"
+import { User, Key, Bell, Shield, Building2, Eye, EyeOff, CheckCircle2, Copy, Loader2, RefreshCw, X, Plus, ChevronDown as ChevronDownIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type ProfileSection = "account" | "integrations" | "security" | "notifications"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
+
+// ─── WorkflowPicker ───────────────────────────────────────────────────────────
+// Dograh workflow objects: { id, name, status, total_runs }  ← uses "id" not "workflow_id"
+interface AvailableWorkflow { id: number; name: string; status?: string; total_runs?: number }
+
+function WorkflowPicker({
+  apiKey,
+  selectedIds,
+  onChange,
+}: {
+  apiKey: string
+  selectedIds: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const { data, isLoading } = useSWR<{ workflows: AvailableWorkflow[] }>(
+    apiKey ? "/api/calls/workflows" : null,
+    fetcher
+  )
+  const available: AvailableWorkflow[] = data?.workflows ?? []
+
+  // Workflows not yet in the selected list
+  const addableWorkflows = available.filter(w => !selectedIds.includes(String(w.id)))
+
+  function removeAt(idx: number) {
+    onChange(selectedIds.filter((_, i) => i !== idx))
+  }
+
+  function addWorkflow(id: string) {
+    if (!id || selectedIds.includes(id)) return
+    onChange([...selectedIds, id])
+  }
+
+  return (
+    <div className="py-4 border-b border-black/[0.06]">
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="text-[13px] font-medium text-[#1d1d1f]">Workflows</p>
+          <p className="text-[11px] text-[#6e6e73] mt-0.5">
+            Select one or more workflows — only runs from these will appear in the Calls tab.
+          </p>
+        </div>
+        <div className="space-y-2">
+          {isLoading && (
+            <div className="flex items-center gap-2 text-[13px] text-[#6e6e73]">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading workflows…
+            </div>
+          )}
+
+          {/* Selected workflow chips */}
+          {selectedIds.filter(Boolean).map((wfId, idx) => {
+            const wf = available.find(w => String(w.id) === wfId)
+            return (
+              <div key={wfId} className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-[#1d1d1f] truncate">
+                    {wf ? wf.name : `Workflow ID: ${wfId}`}
+                  </p>
+                  <p className="text-[11px] font-mono text-[#6e6e73]">
+                    ID: {wfId}{wf ? ` · ${wf.total_runs ?? 0} runs` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeAt(idx)}
+                  className="p-1.5 rounded-lg hover:bg-[#ff3b30]/10 text-[#6e6e73] hover:text-[#ff3b30] transition-colors shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )
+          })}
+
+          {/* Add workflow dropdown */}
+          {!isLoading && addableWorkflows.length > 0 && (
+            <div className="relative w-full">
+              <select
+                value=""
+                onChange={e => {
+                  const val = e.target.value
+                  if (val) addWorkflow(val)
+                  e.target.value = ""
+                }}
+                className="w-full bg-[#f5f5f7] rounded-xl pl-3.5 pr-8 py-2.5 text-[13px] text-[#1d1d1f] outline-none border border-transparent focus:border-[#0066cc]/30 appearance-none cursor-pointer"
+              >
+                <option value="">+ Add a workflow…</option>
+                {addableWorkflows.map(w => (
+                  <option key={w.id} value={String(w.id)}>
+                    {w.name} ({w.total_runs ?? 0} runs · ID: {w.id})
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e6e73]" />
+            </div>
+          )}
+
+          {!isLoading && available.length === 0 && (
+            <p className="text-[12px] text-[#6e6e73]">
+              Save your Voice API key first to load available workflows.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── Reusable components ─────────────────────────────────────────────────────
 
@@ -130,14 +235,21 @@ export function ProfileTab() {
       const json = await res.json()
       if (json.error) { setDetectError(json.error); return }
       const accounts = json.accounts ?? []
-      if (accounts.length === 1) {
-        setBotsailorPhoneId(accounts[0].phone_number_id)
-        setDetectedAccounts(accounts)
-      } else if (accounts.length > 1) {
-        setDetectedAccounts(accounts)
-      } else {
+      if (accounts.length === 0) {
         setDetectError("No WhatsApp accounts found on this BotSailor key.")
+        return
       }
+      setDetectedAccounts(accounts)
+      if (accounts.length === 1) {
+        const phoneId = accounts[0].phone_number_id
+        setBotsailorPhoneId(phoneId)
+        // Auto-save immediately so it persists without the user having to click Save
+        await handleSave({
+          botsailor_api_key: botsailorKey,
+          botsailor_phone_id: phoneId,
+        })
+      }
+      // If multiple accounts, show list — user must pick one, then save
     } catch {
       setDetectError("Failed to reach BotSailor. Check your API key.")
     } finally {
@@ -148,6 +260,8 @@ export function ProfileTab() {
   // Integration fields
   const [voiceApiKey, setVoiceApiKey] = useState("")
   const [voiceBaseUrl, setVoiceBaseUrl] = useState("")
+  // Multi-workflow: stored as newline-separated string in tenant, array in UI
+  const [workflowIds, setWorkflowIds] = useState<string[]>([])
   const [botsailorKey, setBotsailorKey] = useState("")
   const [botsailorPhoneId, setBotsailorPhoneId] = useState("")
   const [shopifyDomain, setShopifyDomain] = useState("")
@@ -155,6 +269,8 @@ export function ProfileTab() {
   const [clientSupabaseKey, setClientSupabaseKey] = useState("")
   const [codTableName, setCodTableName] = useState("")
   const [cartTableName, setCartTableName] = useState("")
+  const [supportTableName, setSupportTableName] = useState("")
+  const [reviewTableName, setReviewTableName] = useState("")
   const [razorpayKeyId, setRazorpayKeyId] = useState("")
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("")
 
@@ -177,13 +293,18 @@ export function ProfileTab() {
     setPhone(tenant.phone ?? "")
     setVoiceApiKey(tenant.voice_api_key ?? "")
     setVoiceBaseUrl(tenant.voice_base_url ?? "")
+    // voice_workflow_id stores newline-separated workflow IDs (reusing existing column)
+    const raw: string = tenant.voice_workflow_id ?? ""
+    setWorkflowIds(raw ? raw.split("\n").filter(Boolean) : [])
     setBotsailorKey(tenant.botsailor_api_key ?? "")
     setBotsailorPhoneId(tenant.botsailor_phone_id ?? "")
     setShopifyDomain(tenant.shopify_store_domain ?? "")
-  setClientSupabaseUrl(tenant.client_supabase_url ?? "")
-  setClientSupabaseKey(tenant.client_supabase_anon_key ?? "")
-  setCodTableName(tenant.cod_table_name ?? "")
-  setCartTableName(tenant.cart_table_name ?? "")
+    setClientSupabaseUrl(tenant.client_supabase_url ?? "")
+    setClientSupabaseKey(tenant.client_supabase_anon_key ?? "")
+    setCodTableName(tenant.cod_table_name ?? "")
+    setCartTableName(tenant.cart_table_name ?? "")
+    setSupportTableName(tenant.support_table_name ?? "")
+    setReviewTableName(tenant.review_table_name ?? "")
     setRazorpayKeyId(tenant.razorpay_key_id ?? "")
     setRazorpayKeySecret(tenant.razorpay_key_secret ?? "")
     setNotifs(n => ({
@@ -294,6 +415,11 @@ export function ProfileTab() {
                 </div>
                 <SecretField label="API Key" value={voiceApiKey} onChange={setVoiceApiKey} hint="Used for all call triggers and run retrieval" />
                 <TextField label="Base URL" value={voiceBaseUrl} onChange={setVoiceBaseUrl} hint="e.g. https://voice.larynxai.in" />
+                <WorkflowPicker
+                  apiKey={voiceApiKey}
+                  selectedIds={workflowIds}
+                  onChange={setWorkflowIds}
+                />
               </div>
 
               {/* BotSailor */}
@@ -326,11 +452,14 @@ export function ProfileTab() {
                   {detectError && <p className="text-[12px] text-red-600 mt-1.5">{detectError}</p>}
                   {detectedAccounts.length > 1 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-[12px] text-[#6e6e73]">Multiple accounts found — click to select:</p>
+                      <p className="text-[12px] text-[#6e6e73]">Multiple accounts found — click one to select and save:</p>
                       {detectedAccounts.map(a => (
                         <button
                           key={a.phone_number_id}
-                          onClick={() => setBotsailorPhoneId(a.phone_number_id)}
+                          onClick={async () => {
+                            setBotsailorPhoneId(a.phone_number_id)
+                            await handleSave({ botsailor_api_key: botsailorKey, botsailor_phone_id: a.phone_number_id })
+                          }}
                           className={cn(
                             "w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-[12px] border transition-colors",
                             botsailorPhoneId === a.phone_number_id
@@ -352,24 +481,72 @@ export function ProfileTab() {
                 </div>
               </div>
 
-              {/* Shopify */}
+              {/* Shopify / Order Tables */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-6 h-6 rounded-md bg-[#95bf47]/20 flex items-center justify-center">
                     <Building2 className="w-3.5 h-3.5 text-[#5a8a00]" />
                   </div>
-                  <p className="text-[14px] font-semibold text-[#1d1d1f]">Client Database (Supabase)</p>
+                  <p className="text-[14px] font-semibold text-[#1d1d1f]">Order Tables</p>
                   <span className={cn("ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full",
-                    clientSupabaseUrl ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
+                    (codTableName || cartTableName) ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
                   )}>
-                    {clientSupabaseUrl ? "Connected" : "Not set"}
+                    {(codTableName || cartTableName) ? "Configured" : "Not set"}
                   </span>
                 </div>
-                <TextField label="Store Domain" value={shopifyDomain} onChange={setShopifyDomain} hint="e.g. my-store.myshopify.com" />
-                <TextField label="Supabase URL" value={clientSupabaseUrl} onChange={setClientSupabaseUrl} hint="e.g. https://iaisgphpjgwmrzkffvgu.supabase.co (not the dashboard URL)" />
-                <SecretField label="Anon Key" value={clientSupabaseKey} onChange={setClientSupabaseKey} hint="Client project anon key" />
-                <TextField label="COD Table Name" value={codTableName} onChange={setCodTableName} hint={`Exact table name in your Supabase (default: cod_confirmation)`} />
-                <TextField label="Cart Table Name" value={cartTableName} onChange={setCartTableName} hint={`Exact table name in your Supabase (default: E-commerce add to cart)`} />
+                <p className="text-[12px] text-[#6e6e73] mb-3">These tables are read directly from your connected Supabase project. Click Detect to auto-fill from your actual table list.</p>
+                {/* COD Table */}
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">COD Table Name</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={codTableName}
+                      onChange={e => setCodTableName(e.target.value)}
+                      placeholder="e.g. cod_confirmation"
+                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                    />
+                    <DetectTablesButton onSelect={setCodTableName} label="COD" />
+                  </div>
+                </div>
+                {/* Cart Table */}
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Cart Table Name</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={cartTableName}
+                      onChange={e => setCartTableName(e.target.value)}
+                      placeholder="e.g. E-commerce add to cart"
+                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                    />
+                    <DetectTablesButton onSelect={setCartTableName} label="Cart" />
+                  </div>
+                </div>
+                {/* Support Table */}
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Customer Support Table Name</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={supportTableName}
+                      onChange={e => setSupportTableName(e.target.value)}
+                      placeholder="e.g. customer_support"
+                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                    />
+                    <DetectTablesButton onSelect={setSupportTableName} label="Support" />
+                  </div>
+                </div>
+                {/* Review Table */}
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Customer Review Table Name</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={reviewTableName}
+                      onChange={e => setReviewTableName(e.target.value)}
+                      placeholder="e.g. customer_review"
+                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                    />
+                    <DetectTablesButton onSelect={setReviewTableName} label="Review" />
+                  </div>
+                </div>
               </div>
 
               {/* Razorpay */}
@@ -394,13 +571,14 @@ export function ProfileTab() {
               <SaveButton payload={{
                 voice_api_key: voiceApiKey,
                 voice_base_url: voiceBaseUrl,
+                voice_workflow_id: workflowIds.filter(Boolean).join("\n"),
                 botsailor_api_key: botsailorKey,
                 botsailor_phone_id: botsailorPhoneId,
                 shopify_store_domain: shopifyDomain,
-                client_supabase_url: clientSupabaseUrl,
-                client_supabase_anon_key: clientSupabaseKey,
                 cod_table_name: codTableName,
                 cart_table_name: cartTableName,
+                support_table_name: supportTableName,
+                review_table_name: reviewTableName,
                 razorpay_key_id: razorpayKeyId,
                 razorpay_key_secret: razorpayKeySecret,
               }} />
@@ -434,6 +612,58 @@ export function ProfileTab() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function DetectTablesButton({
+  onSelect, label,
+}: { onSelect: (t: string) => void; label: string }) {
+  const [tables, setTables] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [err, setErr] = useState("")
+
+  async function detect() {
+    setLoading(true); setErr(""); setOpen(false)
+    try {
+      const res = await fetch("/api/shopify/tables")
+      const json = await res.json()
+      if (json.error) { setErr(json.error); return }
+      setTables(json.tables ?? [])
+      setOpen(true)
+    } catch { setErr("Failed to fetch tables") }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={detect}
+        disabled={loading}
+        className="flex items-center gap-1.5 text-[12px] font-medium text-[#0066cc] hover:text-[#0055b3] disabled:opacity-50 whitespace-nowrap px-3 py-2.5 bg-[#f5f5f7] rounded-xl transition-colors"
+      >
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+        Detect
+      </button>
+      {err && <p className="absolute left-0 top-full mt-1 text-[11px] text-red-600 whitespace-nowrap z-10">{err}</p>}
+      {open && tables.length > 0 && (
+        <div className="absolute right-0 top-full mt-1 bg-white border border-[rgba(0,0,0,0.1)] rounded-xl shadow-lg z-20 min-w-[220px] max-h-60 overflow-y-auto py-1">
+          <p className="px-3 py-1.5 text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider">Select {label} table</p>
+          {tables.map(t => (
+            <button
+              key={t}
+              onClick={() => { onSelect(t); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-[13px] text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors font-mono"
+            >
+              {t}
+            </button>
+          ))}
+          <button onClick={() => setOpen(false)} className="w-full text-left px-3 py-2 text-[12px] text-[#6e6e73] hover:bg-[#f5f5f7] border-t border-[rgba(0,0,0,0.06)]">
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   )
 }

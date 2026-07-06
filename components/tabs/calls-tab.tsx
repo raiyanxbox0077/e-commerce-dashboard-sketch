@@ -6,7 +6,7 @@ import {
   Search, Download, PhoneOutgoing, PhoneIncoming,
   ChevronDown, Play, Pause, FileText, Clock, Coins, CheckCircle2,
   XCircle, AlertCircle, Loader2, Phone, X, User, Mic, Bot,
-  ChevronLeft, ChevronRight, ExternalLink,
+  ChevronLeft, ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTenant } from "@/hooks/use-tenant"
@@ -28,18 +28,12 @@ interface Run {
   created_at?: string
   recording_url?: string
   user_recording_url?: string
-  bot_recording_url?: string
   transcript_url?: string
   gathered_context?: Record<string, unknown>
   initial_context?: Record<string, unknown>
   summary?: string
 }
 
-interface Workflow {
-  workflow_id: string
-  name: string
-  status?: string
-}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; icon: React.ElementType }> = {
   completed:   { label: "Completed",   color: "text-[#1a7a32]",  bg: "bg-[#34c759]/10", dot: "bg-[#34c759]",  icon: CheckCircle2 },
@@ -147,6 +141,142 @@ function AudioPlayer({ src, label }: { src: string; label: string }) {
   )
 }
 
+// ─── Transcript Viewer ───────────────────────────────────────────────────────
+function TranscriptViewer({ url, loadingDetail }: { url: string | null; loadingDetail: boolean }) {
+  const [text, setText] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  function load() {
+    if (!url || loading || text !== null) { setExpanded(true); return }
+    setLoading(true)
+    fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error("failed")
+        return r.text()
+      })
+      .then(t => { setText(t); setExpanded(true) })
+      .catch(() => { setError(true); setExpanded(true) })
+      .finally(() => setLoading(false))
+  }
+
+  // Parse plain-text transcript lines into speaker bubbles
+  // Expected format: "User: ..." / "Agent: ..." / "Bot: ..."
+  // Falls back to displaying raw text if no speaker prefixes found
+  function parseLines(raw: string): { speaker: "user" | "agent" | "other"; text: string }[] {
+    const lines = raw.split(/\r?\n/).filter(l => l.trim())
+    const speakerRe = /^(user|agent|bot|assistant|human|customer):\s*/i
+    const hasSpeakers = lines.some(l => speakerRe.test(l))
+    if (!hasSpeakers) {
+      return lines.map(l => ({ speaker: "other" as const, text: l }))
+    }
+    return lines.map(l => {
+      const m = l.match(/^(user|human|customer):\s*/i)
+      const a = l.match(/^(agent|bot|assistant):\s*/i)
+      if (m) return { speaker: "user" as const, text: l.replace(m[0], "") }
+      if (a) return { speaker: "agent" as const, text: l.replace(a[0], "") }
+      return { speaker: "other" as const, text: l }
+    })
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[12px] font-semibold text-[#6e6e73] uppercase tracking-wider">Transcript</p>
+        {url && !expanded && (
+          <button
+            onClick={load}
+            disabled={loadingDetail}
+            className="flex items-center gap-1.5 text-[12px] font-medium text-[#0066cc] hover:underline"
+          >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+            {loading ? "Loading…" : "Show transcript"}
+          </button>
+        )}
+        {url && expanded && text && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setExpanded(false)}
+              className="text-[12px] font-medium text-[#6e6e73] hover:underline"
+            >
+              Collapse
+            </button>
+            <a
+              href={url}
+              download
+              className="flex items-center gap-1 text-[12px] font-medium text-[#6e6e73] hover:text-[#1d1d1f]"
+            >
+              <Download className="w-3 h-3" /> Download
+            </a>
+          </div>
+        )}
+      </div>
+
+      {!url && (
+        <div className="bg-[#f5f5f7] rounded-xl px-4 py-3 text-[13px] text-[#6e6e73]">
+          {loadingDetail ? "Loading…" : "No transcript available"}
+        </div>
+      )}
+
+      {url && !expanded && (
+        <button
+          onClick={load}
+          className="w-full flex items-center gap-2.5 bg-[#f5f5f7] hover:bg-[#ebebf0] rounded-xl px-4 py-3 transition-colors text-left"
+        >
+          <FileText className="w-4 h-4 text-[#0066cc] shrink-0" />
+          <span className="text-[13px] font-medium text-[#0066cc]">
+            {loading ? "Loading transcript…" : "Show transcript"}
+          </span>
+          {loading && <Loader2 className="w-3.5 h-3.5 text-[#0066cc] animate-spin ml-auto" />}
+        </button>
+      )}
+
+      {expanded && error && (
+        <div className="bg-[#fff3f3] rounded-xl px-4 py-3 text-[13px] text-[#cc0000]">
+          Failed to load transcript.{" "}
+          <a href={url!} target="_blank" rel="noreferrer" className="underline">Open in new tab</a>
+        </div>
+      )}
+
+      {expanded && text && (
+        <div className="bg-[#f5f5f7] rounded-xl overflow-hidden">
+          <div className="max-h-80 overflow-y-auto px-4 py-3 space-y-2">
+            {parseLines(text).map((line, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex gap-2",
+                  line.speaker === "user" ? "flex-row" : "flex-row-reverse"
+                )}
+              >
+                {line.speaker !== "other" && (
+                  <div className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+                    line.speaker === "user" ? "bg-[#e5e5ea]" : "bg-[#0066cc]/10"
+                  )}>
+                    {line.speaker === "user"
+                      ? <User className="w-3 h-3 text-[#6e6e73]" />
+                      : <Bot className="w-3 h-3 text-[#0066cc]" />}
+                  </div>
+                )}
+                <div className={cn(
+                  "rounded-2xl px-3 py-2 text-[12px] leading-relaxed max-w-[85%]",
+                  line.speaker === "user" ? "bg-white text-[#1d1d1f] rounded-tl-sm" :
+                  line.speaker === "agent" ? "bg-[#0066cc]/10 text-[#0055b3] rounded-tr-sm" :
+                  "text-[#6e6e73] italic w-full bg-transparent px-0 py-0.5"
+                )}>
+                  {line.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Run Detail Panel ────────────────────────────────────────────────────────
 function RunDetailPanel({
   run,
@@ -167,7 +297,6 @@ function RunDetailPanel({
   const recordings = [
     d.recording_url && { src: d.recording_url, label: "Full Recording" },
     d.user_recording_url && { src: d.user_recording_url, label: "Customer Recording" },
-    d.bot_recording_url && { src: d.bot_recording_url, label: "Bot Recording" },
   ].filter(Boolean) as { src: string; label: string }[]
 
   const ctx = d.gathered_context && Object.keys(d.gathered_context).length > 0 ? d.gathered_context : null
@@ -278,34 +407,7 @@ function RunDetailPanel({
           </div>
 
           {/* Transcript */}
-          <div>
-            <p className="text-[12px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Transcript</p>
-            {d.transcript_url ? (
-              <div className="flex items-center gap-2">
-                <a
-                  href={d.transcript_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 flex items-center gap-2.5 bg-[#f5f5f7] hover:bg-[#ebebf0] rounded-xl px-4 py-3 transition-colors"
-                >
-                  <FileText className="w-4 h-4 text-[#0066cc]" />
-                  <span className="text-[13px] font-medium text-[#0066cc] flex-1">View Transcript</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-[#6e6e73]" />
-                </a>
-                <a
-                  href={d.transcript_url}
-                  download
-                  className="flex items-center gap-1.5 bg-[#f5f5f7] hover:bg-[#ebebf0] rounded-xl px-3 py-3 text-[12px] font-medium text-[#6e6e73] hover:text-[#1d1d1f] transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" /> Download
-                </a>
-              </div>
-            ) : (
-              <div className="bg-[#f5f5f7] rounded-xl px-4 py-3 text-[13px] text-[#6e6e73]">
-                {isLoading ? "Loading…" : "No transcript available"}
-              </div>
-            )}
-          </div>
+          <TranscriptViewer url={d.transcript_url ?? null} loadingDetail={isLoading} />
 
           {/* Gathered context */}
           {ctx && (
@@ -347,35 +449,25 @@ export function CallsTab() {
   const { tenant } = useTenant()
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState("")
   const [page, setPage] = useState(1)
   const [selectedRun, setSelectedRun] = useState<Run | null>(null)
 
-  // Load workflows for dropdown
-  const { data: workflowsData, isLoading: workflowsLoading } = useSWR(
-    tenant?.voice_api_key ? "/api/calls/workflows" : null,
-    fetcher
-  )
-  const workflows: Workflow[] = workflowsData?.workflows ?? []
-
-  // Fetch runs
-  const queryParams = `?page=${page}&limit=20${selectedWorkflowId ? `&workflow_id=${selectedWorkflowId}` : ""}${filterStatus !== "all" ? `&status=${filterStatus}` : ""}`
+  // Fetch runs — API already fans out across all saved workflow IDs automatically
+  const queryParams = `?page=${page}&limit=20${filterStatus !== "all" ? `&status=${filterStatus}` : ""}`
   const { data, isLoading } = useSWR(
     tenant?.voice_api_key ? `/api/calls${queryParams}` : null,
     fetcher
   )
 
+  const noWorkflowsConfigured: boolean = data?.no_workflows_configured === true
   const allRuns: Run[] = data?.runs ?? []
-  const filteredByWorkflow = selectedWorkflowId
-    ? allRuns.filter(r => String(r.workflow_id) === String(selectedWorkflowId))
-    : allRuns
   const runs = search
-    ? filteredByWorkflow.filter(r =>
+    ? allRuns.filter(r =>
         (r.contact_name ?? "").toLowerCase().includes(search.toLowerCase()) ||
         (r.phone_number ?? "").includes(search) ||
         (r.run_id ?? "").includes(search)
       )
-    : filteredByWorkflow
+    : allRuns
 
   // Close panel on Escape
   useEffect(() => {
@@ -403,26 +495,6 @@ export function CallsTab() {
       <div className="space-y-4">
         {/* Toolbar */}
         <div className="bg-white rounded-2xl hairline px-4 py-3 flex flex-wrap items-center gap-3">
-          {/* Workflow dropdown */}
-          <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-full px-3.5 py-2 min-w-[180px]">
-            {workflowsLoading
-              ? <Loader2 className="w-3.5 h-3.5 text-[#6e6e73] animate-spin shrink-0" />
-              : <Bot className="w-3.5 h-3.5 text-[#6e6e73] shrink-0" />}
-            <select
-              value={selectedWorkflowId}
-              onChange={e => { setSelectedWorkflowId(e.target.value); setPage(1) }}
-              className="bg-transparent text-[13px] text-[#1d1d1f] outline-none w-full appearance-none cursor-pointer"
-            >
-              <option key="__all__" value="">All workflows</option>
-              {workflows.map((w, i) => (
-                <option key={w.workflow_id ?? i} value={w.workflow_id}>
-                  {w.name || w.workflow_id}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#6e6e73] shrink-0 pointer-events-none" />
-          </div>
-
           {/* Search */}
           <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-full px-3.5 py-2">
             <Search className="w-3.5 h-3.5 text-[#6e6e73] shrink-0" />
@@ -493,6 +565,14 @@ export function CallsTab() {
                       ))}
                     </tr>
                   ))
+                ) : noWorkflowsConfigured ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-14 text-center">
+                      <Bot className="w-8 h-8 text-[#c7c7cc] mx-auto mb-2" />
+                      <p className="text-[14px] font-semibold text-[#1d1d1f]">No workflows configured</p>
+                      <p className="text-[13px] text-[#6e6e73] mt-1">Go to Profile &rarr; Integrations &rarr; Voice and add your workflow IDs.</p>
+                    </td>
+                  </tr>
                 ) : runs.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-14 text-center">

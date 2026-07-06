@@ -88,7 +88,8 @@ export function WhatsAppTab() {
   const chats: BotSailorChat[] = Array.isArray(rawChats) ? rawChats : []
   const rawContacts = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers
   const contacts: BotSailorContact[] = Array.isArray(rawContacts) ? rawContacts : []
-  const rawMessages = messagesData?.message ?? messagesData?.data ?? messagesData?.messages
+  // Route now returns { messages: [...] } — normalised array, no more numeric-keyed object
+  const rawMessages = messagesData?.messages ?? messagesData?.data ?? messagesData?.message
   const messages: Message[] = Array.isArray(rawMessages) ? rawMessages : []
   // Error from BotSailor comes as message string when status != "1"
   const waError = (chatsData?.status === "0" || contactsData?.status === "0")
@@ -309,22 +310,27 @@ export function WhatsAppTab() {
                 <div className="flex items-center justify-center py-8">
                   <div className="w-6 h-6 border-2 border-[#0066cc] border-t-transparent rounded-full animate-spin" />
                 </div>
+              ) : messagesData?.error ? (
+                <div className="flex items-center justify-center py-8 px-4 text-center">
+                  <div>
+                    <AlertCircle className="w-6 h-6 text-red-400 mx-auto mb-2" />
+                    <p className="text-[13px] text-red-600">{messagesData.error}</p>
+                    <p className="text-[11px] text-[#6e6e73] mt-1">Phone: {selectedPhone}</p>
+                  </div>
+                </div>
               ) : messages.length === 0 ? (
-                <div className="text-center py-8 text-[13px] text-[#6e6e73]">No messages yet</div>
+                <div className="text-center py-8 text-[13px] text-[#6e6e73]">
+                  No messages yet
+                  {selectedPhone && <p className="text-[11px] text-[#6e6e73] mt-1">Phone: {selectedPhone}</p>}
+                </div>
               ) : messages.map((msg, i) => {
                 // BotSailor: sender is "subscriber" (customer) or "bot"/"agent"
                 const rawMsg = msg as Record<string, unknown>
-                const isUser = rawMsg.sender === "subscriber" || msg.sender_type === "subscriber" || msg.direction === "incoming"
-                // message_content is a JSON string in BotSailor conversations
-                let text = msg.message ?? msg.text ?? ""
-                if (!text && rawMsg.message_content) {
-                  try {
-                    const mc = JSON.parse(rawMsg.message_content as string)
-                    text = mc?.text?.body ?? mc?.body ?? mc?.interactive?.body?.text ?? JSON.stringify(mc)
-                  } catch {
-                    text = String(rawMsg.message_content)
-                  }
-                }
+                // BotSailor: sender="user" means the customer, "bot"/"agent" means outbound
+                const isUser = rawMsg.sender === "user" || rawMsg.sender === "subscriber" || msg.sender_type === "user" || msg.sender_type === "subscriber" || msg.direction === "incoming"
+                // Route already extracts plain text into msg.message — just use it directly
+                const raw = msg.message ?? msg.text ?? ""
+                const text = typeof raw === "string" ? raw : typeof raw === "object" && raw !== null ? JSON.stringify(raw) : String(raw ?? "")
                 const rawTime = (rawMsg.conversation_time as string | undefined) ?? msg.created_at
                 const time = rawTime ? new Date(rawTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : (msg.time ?? "")
                 return (
