@@ -62,14 +62,31 @@ export async function GET(req: Request) {
     }
   }
 
-  // If multiple workflow IDs are configured, fan out and merge; otherwise fetch org-wide
+  // Resolve workflow IDs — saved values might be names (legacy); always normalise to numeric IDs
+  let resolvedWorkflowIds: string[] = workflowIds
+  if (workflowIds.length > 0) {
+    const wfRes = await fetch(`${baseUrl}/api/v1/workflow/fetch`, { headers: { 'X-API-Key': apiKey } })
+      .then(r => r.json()).catch(() => null)
+    const availableWorkflows: { id: number; name: string }[] =
+      Array.isArray(wfRes) ? wfRes : (wfRes?.workflows ?? wfRes?.data ?? [])
+
+    resolvedWorkflowIds = workflowIds.map(val => {
+      // Already a numeric string matching a real workflow ID
+      if (availableWorkflows.some(w => String(w.id) === val.trim())) return val.trim()
+      // Saved as a name — resolve to numeric ID
+      const byName = availableWorkflows.find(w => w.name.toLowerCase() === val.trim().toLowerCase())
+      return byName ? String(byName.id) : val.trim()
+    }).filter(Boolean)
+  }
+
+  // Fan out across all configured (resolved) workflow IDs, or fetch org-wide if none saved
   let runsRaw: Record<string, unknown>[] = []
   let totalCount = 0
 
-  if (workflowIds.length > 0) {
+  if (resolvedWorkflowIds.length > 0) {
     // Parallel fetch one page from each workflow, then merge + sort by created_at desc
     const results = await Promise.all(
-      workflowIds.map(wfId => {
+      resolvedWorkflowIds.map(wfId => {
         const params = new URLSearchParams({ page, limit })
         params.set('filters', JSON.stringify([{ field: 'workflow_id', op: 'eq', value: wfId }]))
         if (status) params.append('filters', JSON.stringify([{ field: 'status', op: 'eq', value: status }]))
@@ -83,14 +100,13 @@ export async function GET(req: Request) {
       runsRaw.push(...batch)
       totalCount += raw?.total_count ?? batch.length
     }
-    // Sort merged results by created_at descending
     runsRaw.sort((a, b) => {
       const ta = a.created_at ? new Date(a.created_at as string).getTime() : 0
       const tb = b.created_at ? new Date(b.created_at as string).getTime() : 0
       return tb - ta
     })
   } else {
-    // No workflow filter — fetch all org runs
+    // No workflow IDs saved — fetch all org runs
     const params = new URLSearchParams({ page, limit })
     if (status) params.set('filters', JSON.stringify([{ field: 'status', op: 'eq', value: status }]))
     const res = await fetch(`${baseUrl}/api/v1/organizations/usage/runs?${params}`, { headers: { 'X-API-Key': apiKey } })

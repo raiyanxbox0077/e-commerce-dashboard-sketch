@@ -2,12 +2,132 @@
 
 import { useState, useEffect } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
-import { User, Key, Bell, Shield, Building2, Eye, EyeOff, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react"
+import { User, Key, Bell, Shield, Building2, Eye, EyeOff, CheckCircle2, Copy, Loader2, RefreshCw, X, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type ProfileSection = "account" | "integrations" | "security" | "notifications"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
+
+// ─── WorkflowPicker ───────────────────────────────────────────────────────────
+// Fetches available workflows from the API and lets the user pick by name.
+// Stores numeric IDs (e.g. "26") in state, displayed with workflow names.
+interface AvailableWorkflow { id: number; name: string; status?: string; total_runs?: number }
+
+function WorkflowPicker({
+  apiKey,
+  selectedIds,
+  onChange,
+}: {
+  apiKey: string
+  selectedIds: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const { data, isLoading } = useSWR<{ workflows: AvailableWorkflow[] }>(
+    apiKey ? "/api/calls/workflows" : null,
+    fetcher
+  )
+  const available: AvailableWorkflow[] = data?.workflows ?? []
+
+  // Normalise — resolve any saved name back to numeric id
+  function resolveId(val: string): string {
+    if (!val) return ""
+    // If it's already a numeric string matching an available workflow, keep it
+    const byId = available.find(w => String(w.id) === val.trim())
+    if (byId) return String(byId.id)
+    // Try matching by name (case-insensitive) — migrate old saved names
+    const byName = available.find(w => w.name.toLowerCase() === val.trim().toLowerCase())
+    if (byName) return String(byName.id)
+    return val
+  }
+
+  // Ids that are not yet in the list (available to add)
+  const addableWorkflows = available.filter(w => !selectedIds.map(resolveId).includes(String(w.id)))
+
+  function updateAt(idx: number, newId: string) {
+    const updated = [...selectedIds]
+    updated[idx] = newId
+    onChange(updated)
+  }
+
+  function removeAt(idx: number) {
+    onChange(selectedIds.filter((_, i) => i !== idx))
+  }
+
+  function addWorkflow(id: string) {
+    if (!selectedIds.includes(id)) onChange([...selectedIds.filter(Boolean), id])
+  }
+
+  const resolvedIds = selectedIds.map(resolveId)
+
+  return (
+    <div className="py-4 border-b border-black/[0.06]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div>
+          <p className="text-[13px] font-medium text-[#1d1d1f]">Workflows</p>
+          <p className="text-[11px] text-[#6e6e73] mt-0.5">
+            Select workflows — runs from all selected workflows appear in the Calls tab.
+          </p>
+        </div>
+        <div className="sm:col-span-2 space-y-2">
+          {isLoading && (
+            <div className="flex items-center gap-2 text-[13px] text-[#6e6e73]">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading workflows…
+            </div>
+          )}
+
+          {/* Selected workflow chips */}
+          {resolvedIds.filter(Boolean).map((wfId, idx) => {
+            const wf = available.find(w => String(w.id) === wfId)
+            return (
+              <div key={idx} className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-[#1d1d1f] truncate">
+                    {wf ? wf.name : `ID: ${wfId}`}
+                  </p>
+                  <p className="text-[11px] font-mono text-[#6e6e73]">
+                    ID: {wfId}{wf ? ` · ${wf.total_runs ?? 0} runs` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => removeAt(idx)}
+                  className="p-1.5 rounded-lg hover:bg-[#ff3b30]/10 text-[#6e6e73] hover:text-[#ff3b30] transition-colors shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )
+          })}
+
+          {/* Add workflow dropdown */}
+          {addableWorkflows.length > 0 && (
+            <div className="flex items-center gap-2">
+              <select
+                defaultValue=""
+                onChange={e => { if (e.target.value) { addWorkflow(e.target.value); e.target.value = "" } }}
+                className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none border border-transparent focus:border-[#0066cc]/30 appearance-none cursor-pointer"
+              >
+                <option value="" disabled>Add a workflow…</option>
+                {addableWorkflows.map(w => (
+                  <option key={w.id} value={String(w.id)}>
+                    {w.name} ({w.total_runs ?? 0} runs)
+                  </option>
+                ))}
+              </select>
+              <Plus className="w-4 h-4 text-[#6e6e73] shrink-0 pointer-events-none" />
+            </div>
+          )}
+
+          {!isLoading && available.length === 0 && (
+            <p className="text-[12px] text-[#6e6e73]">
+              Save your Voice API key first to load available workflows.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── Reusable components ─────────────────────────────────────────────────────
 
@@ -310,44 +430,11 @@ export function ProfileTab() {
                 </div>
                 <SecretField label="API Key" value={voiceApiKey} onChange={setVoiceApiKey} hint="Used for all call triggers and run retrieval" />
                 <TextField label="Base URL" value={voiceBaseUrl} onChange={setVoiceBaseUrl} hint="e.g. https://voice.larynxai.in" />
-                <div className="py-4 border-b border-black/[0.06]">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div>
-                      <p className="text-[13px] font-medium text-[#1d1d1f]">Workflow IDs</p>
-                      <p className="text-[11px] text-[#6e6e73] mt-0.5">Add one or more workflow IDs. Runs from all listed workflows will appear in the Calls tab.</p>
-                    </div>
-                    <div className="sm:col-span-2 space-y-2">
-                      {workflowIds.map((wfId, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <input
-                            value={wfId}
-                            onChange={e => {
-                              const updated = [...workflowIds]
-                              updated[idx] = e.target.value
-                              setWorkflowIds(updated)
-                            }}
-                            placeholder={`e.g. wf_abc${idx + 1}`}
-                            className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] font-mono outline-none border border-transparent focus:border-[#0066cc]/30 placeholder:text-[#c7c7cc]"
-                          />
-                          {workflowIds.length > 1 && (
-                            <button
-                              onClick={() => setWorkflowIds(workflowIds.filter((_, i) => i !== idx))}
-                              className="p-2 rounded-lg hover:bg-[#ff3b30]/10 text-[#ff3b30] transition-colors"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => setWorkflowIds([...workflowIds, ""])}
-                        className="text-[13px] font-medium text-[#0066cc] hover:underline"
-                      >
-                        + Add another workflow
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <WorkflowPicker
+                  apiKey={voiceApiKey}
+                  selectedIds={workflowIds}
+                  onChange={setWorkflowIds}
+                />
               </div>
 
               {/* BotSailor */}

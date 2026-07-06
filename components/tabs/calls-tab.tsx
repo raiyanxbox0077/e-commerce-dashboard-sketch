@@ -35,11 +35,6 @@ interface Run {
   summary?: string
 }
 
-interface Workflow {
-  workflow_id: string
-  name: string
-  status?: string
-}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; icon: React.ElementType }> = {
   completed:   { label: "Completed",   color: "text-[#1a7a32]",  bg: "bg-[#34c759]/10", dot: "bg-[#34c759]",  icon: CheckCircle2 },
@@ -347,35 +342,24 @@ export function CallsTab() {
   const { tenant } = useTenant()
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState("")
   const [page, setPage] = useState(1)
   const [selectedRun, setSelectedRun] = useState<Run | null>(null)
 
-  // Load workflows for dropdown
-  const { data: workflowsData, isLoading: workflowsLoading } = useSWR(
-    tenant?.voice_api_key ? "/api/calls/workflows" : null,
-    fetcher
-  )
-  const workflows: Workflow[] = workflowsData?.workflows ?? []
-
-  // Fetch runs
-  const queryParams = `?page=${page}&limit=20${selectedWorkflowId ? `&workflow_id=${selectedWorkflowId}` : ""}${filterStatus !== "all" ? `&status=${filterStatus}` : ""}`
+  // Fetch runs — API already fans out across all saved workflow IDs automatically
+  const queryParams = `?page=${page}&limit=20${filterStatus !== "all" ? `&status=${filterStatus}` : ""}`
   const { data, isLoading } = useSWR(
     tenant?.voice_api_key ? `/api/calls${queryParams}` : null,
     fetcher
   )
 
   const allRuns: Run[] = data?.runs ?? []
-  const filteredByWorkflow = selectedWorkflowId
-    ? allRuns.filter(r => String(r.workflow_id) === String(selectedWorkflowId))
-    : allRuns
   const runs = search
-    ? filteredByWorkflow.filter(r =>
+    ? allRuns.filter(r =>
         (r.contact_name ?? "").toLowerCase().includes(search.toLowerCase()) ||
         (r.phone_number ?? "").includes(search) ||
         (r.run_id ?? "").includes(search)
       )
-    : filteredByWorkflow
+    : allRuns
 
   // Close panel on Escape
   useEffect(() => {
@@ -403,26 +387,6 @@ export function CallsTab() {
       <div className="space-y-4">
         {/* Toolbar */}
         <div className="bg-white rounded-2xl hairline px-4 py-3 flex flex-wrap items-center gap-3">
-          {/* Workflow dropdown */}
-          <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-full px-3.5 py-2 min-w-[180px]">
-            {workflowsLoading
-              ? <Loader2 className="w-3.5 h-3.5 text-[#6e6e73] animate-spin shrink-0" />
-              : <Bot className="w-3.5 h-3.5 text-[#6e6e73] shrink-0" />}
-            <select
-              value={selectedWorkflowId}
-              onChange={e => { setSelectedWorkflowId(e.target.value); setPage(1) }}
-              className="bg-transparent text-[13px] text-[#1d1d1f] outline-none w-full appearance-none cursor-pointer"
-            >
-              <option key="__all__" value="">All workflows</option>
-              {workflows.map((w, i) => (
-                <option key={w.workflow_id ?? i} value={w.workflow_id}>
-                  {w.name || w.workflow_id}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#6e6e73] shrink-0 pointer-events-none" />
-          </div>
-
           {/* Search */}
           <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-full px-3.5 py-2">
             <Search className="w-3.5 h-3.5 text-[#6e6e73] shrink-0" />
