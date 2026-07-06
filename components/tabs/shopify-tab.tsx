@@ -453,6 +453,7 @@ const TICKET_STATUS: Record<string, { label: string; color: string; bg: string }
 }
 
 function SupportDetailPanel({ ticket, onClose }: { ticket: SupportTicket; onClose: () => void }) {
+  const [expandedRun, setExpandedRun] = useState(false)
   const S = TICKET_STATUS[(ticket.status ?? "open").toLowerCase()] ?? TICKET_STATUS.open
   const CS = ticket.call_status ? (CALL_STATUS_MAP[ticket.call_status] ?? { label: ticket.call_status, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }) : null
   return (
@@ -494,9 +495,21 @@ function SupportDetailPanel({ ticket, onClose }: { ticket: SupportTicket; onClos
           <Grid2 items={[
             ["WA Status", ticket.whatsapp_status ?? "—"],
             ["Call Status", CS?.label ?? "—"],
-            ["Run ID", ticket.run_id ?? "—"],
           ]} mono />
         </Section>
+        {ticket.run_id && (
+          <Section label="Workflow Run">
+            <button
+              onClick={() => setExpandedRun(v => !v)}
+              className="flex items-center gap-2 w-full bg-[#f5f5f7] hover:bg-[#ebebf0] rounded-xl px-3.5 py-2.5 transition-colors text-left"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5 text-[#0066cc] shrink-0" />
+              <code className="text-[12px] font-mono text-[#0066cc] flex-1 truncate">{ticket.run_id}</code>
+              <ChevronRight className={cn("w-3.5 h-3.5 text-[#6e6e73] shrink-0 transition-transform", expandedRun && "rotate-90")} />
+            </button>
+            {expandedRun && <RunMiniPanel runId={ticket.run_id} onClose={() => setExpandedRun(false)} />}
+          </Section>
+        )}
       </div>
       <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
         {ticket.recording_url && <a href={ticket.recording_url} target="_blank" rel="noreferrer" className="action-link-blue"><PhoneCall className="w-3.5 h-3.5" /> Recording</a>}
@@ -577,6 +590,7 @@ const SENTIMENT_MAP: Record<string, { label: string; color: string; bg: string }
 }
 
 function ReviewDetailPanel({ review, onClose }: { review: Review; onClose: () => void }) {
+  const [expandedRun, setExpandedRun] = useState(false)
   const sent = SENTIMENT_MAP[(review.sentiment ?? "").toLowerCase()]
   const CS = review.call_status ? (CALL_STATUS_MAP[review.call_status] ?? { label: review.call_status, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }) : null
   return (
@@ -617,9 +631,21 @@ function ReviewDetailPanel({ review, onClose }: { review: Review; onClose: () =>
           <Grid2 items={[
             ["WA Status", review.whatsapp_status ?? "—"],
             ["Call Status", CS?.label ?? "—"],
-            ["Run ID", review.run_id ?? "—"],
           ]} mono />
         </Section>
+        {review.run_id && (
+          <Section label="Workflow Run">
+            <button
+              onClick={() => setExpandedRun(v => !v)}
+              className="flex items-center gap-2 w-full bg-[#f5f5f7] hover:bg-[#ebebf0] rounded-xl px-3.5 py-2.5 transition-colors text-left"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5 text-[#0066cc] shrink-0" />
+              <code className="text-[12px] font-mono text-[#0066cc] flex-1 truncate">{review.run_id}</code>
+              <ChevronRight className={cn("w-3.5 h-3.5 text-[#6e6e73] shrink-0 transition-transform", expandedRun && "rotate-90")} />
+            </button>
+            {expandedRun && <RunMiniPanel runId={review.run_id} onClose={() => setExpandedRun(false)} />}
+          </Section>
+        )}
       </div>
       <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
         {review.recording_url && <a href={review.recording_url} target="_blank" rel="noreferrer" className="action-link-blue"><PhoneCall className="w-3.5 h-3.5" /> Recording</a>}
