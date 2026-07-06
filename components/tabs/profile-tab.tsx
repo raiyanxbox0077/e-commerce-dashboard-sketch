@@ -155,6 +155,7 @@ export function ProfileTab() {
   // Integration fields
   const [voiceApiKey, setVoiceApiKey] = useState("")
   const [voiceBaseUrl, setVoiceBaseUrl] = useState("")
+  const [voiceWorkflowId, setVoiceWorkflowId] = useState("")
   const [botsailorKey, setBotsailorKey] = useState("")
   const [botsailorPhoneId, setBotsailorPhoneId] = useState("")
   const [shopifyDomain, setShopifyDomain] = useState("")
@@ -162,6 +163,8 @@ export function ProfileTab() {
   const [clientSupabaseKey, setClientSupabaseKey] = useState("")
   const [codTableName, setCodTableName] = useState("")
   const [cartTableName, setCartTableName] = useState("")
+  const [supportTableName, setSupportTableName] = useState("")
+  const [reviewTableName, setReviewTableName] = useState("")
   const [razorpayKeyId, setRazorpayKeyId] = useState("")
   const [razorpayKeySecret, setRazorpayKeySecret] = useState("")
 
@@ -184,13 +187,16 @@ export function ProfileTab() {
     setPhone(tenant.phone ?? "")
     setVoiceApiKey(tenant.voice_api_key ?? "")
     setVoiceBaseUrl(tenant.voice_base_url ?? "")
+    setVoiceWorkflowId(tenant.voice_workflow_id ?? "")
     setBotsailorKey(tenant.botsailor_api_key ?? "")
     setBotsailorPhoneId(tenant.botsailor_phone_id ?? "")
     setShopifyDomain(tenant.shopify_store_domain ?? "")
-  setClientSupabaseUrl(tenant.client_supabase_url ?? "")
-  setClientSupabaseKey(tenant.client_supabase_anon_key ?? "")
-  setCodTableName(tenant.cod_table_name ?? "")
-  setCartTableName(tenant.cart_table_name ?? "")
+    setClientSupabaseUrl(tenant.client_supabase_url ?? "")
+    setClientSupabaseKey(tenant.client_supabase_anon_key ?? "")
+    setCodTableName(tenant.cod_table_name ?? "")
+    setCartTableName(tenant.cart_table_name ?? "")
+    setSupportTableName(tenant.support_table_name ?? "")
+    setReviewTableName(tenant.review_table_name ?? "")
     setRazorpayKeyId(tenant.razorpay_key_id ?? "")
     setRazorpayKeySecret(tenant.razorpay_key_secret ?? "")
     setNotifs(n => ({
@@ -301,6 +307,22 @@ export function ProfileTab() {
                 </div>
                 <SecretField label="API Key" value={voiceApiKey} onChange={setVoiceApiKey} hint="Used for all call triggers and run retrieval" />
                 <TextField label="Base URL" value={voiceBaseUrl} onChange={setVoiceBaseUrl} hint="e.g. https://voice.larynxai.in" />
+                <div className="py-4 border-b border-black/[0.06]">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <p className="text-[13px] font-medium text-[#1d1d1f]">Workflow ID</p>
+                      <p className="text-[11px] text-[#6e6e73] mt-0.5">Fetch runs only from this workflow instead of all workflows</p>
+                    </div>
+                    <div className="sm:col-span-2 flex items-center gap-2">
+                      <input
+                        value={voiceWorkflowId}
+                        onChange={e => setVoiceWorkflowId(e.target.value)}
+                        placeholder="e.g. wf_abc123"
+                        className="w-full bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] font-mono outline-none border border-transparent focus:border-[#0066cc]/30 placeholder:text-[#c7c7cc]"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* BotSailor */}
@@ -402,6 +424,32 @@ export function ProfileTab() {
                     <DetectTablesButton onSelect={setCartTableName} label="Cart" />
                   </div>
                 </div>
+                {/* Support Table */}
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Customer Support Table Name</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={supportTableName}
+                      onChange={e => setSupportTableName(e.target.value)}
+                      placeholder="e.g. customer_support"
+                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                    />
+                    <DetectTablesButton onSelect={setSupportTableName} label="Support" />
+                  </div>
+                </div>
+                {/* Review Table */}
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Customer Review Table Name</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={reviewTableName}
+                      onChange={e => setReviewTableName(e.target.value)}
+                      placeholder="e.g. customer_review"
+                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                    />
+                    <DetectTablesButton onSelect={setReviewTableName} label="Review" />
+                  </div>
+                </div>
               </div>
 
               {/* Razorpay */}
@@ -426,11 +474,14 @@ export function ProfileTab() {
               <SaveButton payload={{
                 voice_api_key: voiceApiKey,
                 voice_base_url: voiceBaseUrl,
+                voice_workflow_id: voiceWorkflowId,
                 botsailor_api_key: botsailorKey,
                 botsailor_phone_id: botsailorPhoneId,
                 shopify_store_domain: shopifyDomain,
                 cod_table_name: codTableName,
                 cart_table_name: cartTableName,
+                support_table_name: supportTableName,
+                review_table_name: reviewTableName,
                 razorpay_key_id: razorpayKeyId,
                 razorpay_key_secret: razorpayKeySecret,
               }} />

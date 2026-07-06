@@ -14,6 +14,8 @@ import {
   Zap,
   X,
   LogOut,
+  HeadphonesIcon,
+  Star,
 } from "lucide-react"
 
 export type NavTab =
@@ -21,6 +23,8 @@ export type NavTab =
   | "calls"
   | "shopify"
   | "whatsapp"
+  | "support"
+  | "reviews"
   | "wallet"
   | "billing"
   | "profile"
@@ -33,10 +37,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "calls", label: "Calls", icon: PhoneCall },
-  { id: "shopify", label: "Shopify", icon: ShoppingBag },
-  { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { id: "overview",  label: "Overview",         icon: LayoutDashboard },
+  { id: "calls",     label: "Calls",            icon: PhoneCall },
+  { id: "shopify",   label: "Shopify",          icon: ShoppingBag },
+  { id: "whatsapp",  label: "WhatsApp",         icon: MessageCircle },
+  { id: "support",   label: "Customer Support", icon: HeadphonesIcon },
+  { id: "reviews",   label: "Customer Reviews", icon: Star },
 ]
 
 const ACCOUNT_ITEMS: NavItem[] = [

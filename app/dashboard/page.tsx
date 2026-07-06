@@ -7,6 +7,8 @@ import { OverviewTab } from "@/components/tabs/overview-tab"
 import { CallsTab } from "@/components/tabs/calls-tab"
 import { ShopifyTab } from "@/components/tabs/shopify-tab"
 import { WhatsAppTab } from "@/components/tabs/whatsapp-tab"
+import { CustomerSupportTab } from "@/components/tabs/customer-support-tab"
+import { CustomerReviewTab } from "@/components/tabs/customer-review-tab"
 import { WalletTab } from "@/components/tabs/wallet-tab"
 import { BillingTab } from "@/components/tabs/billing-tab"
 import { ProfileTab } from "@/components/tabs/profile-tab"
@@ -41,6 +43,8 @@ export default function DashboardPage() {
             {activeTab === "calls"    && <CallsTab />}
             {activeTab === "shopify"  && <ShopifyTab />}
             {activeTab === "whatsapp" && <WhatsAppTab />}
+            {activeTab === "support"  && <CustomerSupportTab />}
+            {activeTab === "reviews"  && <CustomerReviewTab />}
             {activeTab === "wallet"   && <WalletTab onTabChange={setActiveTab} />}
             {activeTab === "billing"  && <BillingTab />}
             {activeTab === "profile"  && <ProfileTab />}

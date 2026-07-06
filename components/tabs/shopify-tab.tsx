@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import useSWR from "swr"
-import { Search, ExternalLink, PhoneCall, MessageCircle, ChevronDown, ChevronUp, ShoppingBag, AlertCircle } from "lucide-react"
+import { Search, ExternalLink, PhoneCall, MessageCircle, ShoppingBag, AlertCircle, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTenant } from "@/hooks/use-tenant"
 
@@ -50,91 +50,128 @@ const COD_STATUS: Record<string, { label: string; color: string; bg: string }> =
   no_answer:  { label: "No Answer",  color: "text-[#8a5900]", bg: "bg-[#ff9500]/10" },
 }
 
-function CodRow({ order }: { order: CodOrder }) {
-  const [expanded, setExpanded] = useState(false)
+// ─── COD Detail Panel ───────────────────────────────────────────────────────
+
+function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => void }) {
   const statusKey = (order.status ?? "pending").toLowerCase()
   const S = COD_STATUS[statusKey] ?? { label: order.status ?? "—", color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
   const orderId = order.order_number ?? `#${order["order id"] ?? "—"}`
 
   return (
-    <>
-      <tr
-        className="border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer"
-        onClick={() => setExpanded(e => !e)}
-      >
-        <td className="px-4 py-3.5">
-          <p className="text-[13px] font-semibold text-[#1d1d1f]">{orderId}</p>
-          <p className="text-[11px] text-[#6e6e73]">{order.order_date ? new Date(order.order_date).toLocaleDateString("en-IN") : "—"}</p>
-        </td>
-        <td className="px-4 py-3.5 hidden sm:table-cell">
-          <p className="text-[13px] font-medium text-[#1d1d1f]">{order.customer_name ?? "—"}</p>
-          <p className="text-[11px] text-[#6e6e73]">{order.phone ?? "—"}</p>
-        </td>
-        <td className="px-4 py-3.5 hidden lg:table-cell">
-          <p className="text-[13px] text-[#1d1d1f] truncate max-w-[200px]">{order.product_name ?? "—"}</p>
-          <p className="text-[11px] text-[#6e6e73]">{order.city ?? "—"}</p>
-        </td>
-        <td className="px-4 py-3.5">
-          <p className="text-[14px] font-semibold text-[#1d1d1f]">
-            ₹{(order.total_amount ?? 0).toLocaleString("en-IN")}
-          </p>
-        </td>
-        <td className="px-4 py-3.5">
-          <span className={cn("inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full", S.bg, S.color)}>
-            {S.label}
-          </span>
-        </td>
-        <td className="px-4 py-3.5 hidden md:table-cell">
-          <code className="text-[11px] font-mono text-[#6e6e73]">{order.RUN_ID ?? "—"}</code>
-        </td>
-        <td className="px-4 py-3.5">
-          {expanded ? <ChevronUp className="w-4 h-4 text-[#6e6e73]" /> : <ChevronDown className="w-4 h-4 text-[#6e6e73]" />}
-        </td>
-      </tr>
-      {expanded && (
-        <tr className="bg-[#f5f5f7]">
-          <td colSpan={7} className="px-5 py-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-              {[
-                ["Confirmation", order.confirmation_number ?? "—"],
-                ["SKU", order.sku ?? "—"],
-                ["Variant", order.variant ?? "—"],
-                ["Qty", order.quantity ?? "—"],
-                ["Payment", order.payment_method ?? "—"],
-                ["Address", [order.address_line1, order.address_line2, order.city, order.state, order.pincode].filter(Boolean).join(", ") || "—"],
-                ["Shipping", order.shipping_charge ? `₹${order.shipping_charge}` : "—"],
-                ["Tax", order.tax ? `₹${order.tax}` : "—"],
-              ].map(([k, v]) => (
-                <div key={k} className="bg-white rounded-xl px-3.5 py-2.5 hairline">
-                  <p className="text-[11px] text-[#6e6e73]">{k}</p>
-                  <p className="text-[12px] font-medium text-[#1d1d1f] truncate">{v}</p>
-                </div>
-              ))}
+    <div className="bg-white rounded-2xl hairline overflow-hidden flex flex-col h-full">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06]">
+        <div>
+          <p className="text-[15px] font-semibold text-[#1d1d1f]">{orderId}</p>
+          <p className="text-[12px] text-[#6e6e73]">{order.customer_name ?? "—"} · {order.order_date ? new Date(order.order_date).toLocaleDateString("en-IN") : "—"}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", S.bg, S.color)}>{S.label}</span>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73]"><X className="w-4 h-4" /></button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <div>
+          <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Customer</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[["Phone", order.phone ?? "—"], ["Email", order.email ?? "—"]].map(([k, v]) => (
+              <div key={k} className="bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+                <p className="text-[11px] text-[#6e6e73]">{k}</p>
+                <p className="text-[13px] font-medium text-[#1d1d1f] truncate">{v}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Order Details</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              ["Confirmation", order.confirmation_number ?? "—"],
+              ["Payment", order.payment_method ?? "—"],
+              ["SKU", order.sku ?? "—"],
+              ["Variant", order.variant ?? "—"],
+              ["Qty", order.quantity ?? "—"],
+              ["Product Price", order.product_price ? `₹${order.product_price}` : "—"],
+              ["Shipping", order.shipping_charge ? `₹${order.shipping_charge}` : "—"],
+              ["Tax", order.tax ? `₹${order.tax}` : "—"],
+            ].map(([k, v]) => (
+              <div key={k} className="bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+                <p className="text-[11px] text-[#6e6e73]">{k}</p>
+                <p className="text-[13px] font-medium text-[#1d1d1f] truncate">{v}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Delivery</p>
+          <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-3">
+            <p className="text-[13px] text-[#1d1d1f]">
+              {[order.address_line1, order.address_line2, order.city, order.state, order.pincode].filter(Boolean).join(", ") || "—"}
+            </p>
+          </div>
+        </div>
+        {order.RUN_ID && (
+          <div>
+            <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Call</p>
+            <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+              <p className="text-[11px] text-[#6e6e73]">Run ID</p>
+              <p className="text-[12px] font-mono text-[#1d1d1f]">{order.RUN_ID}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {order.RUN_ID && (
-                <a href="#calls" className="inline-flex items-center gap-1.5 bg-white text-[#0066cc] text-[13px] font-medium rounded-full px-4 py-2 hairline hover:bg-[#f0f0f5] transition-colors">
-                  <PhoneCall className="w-3.5 h-3.5" /> View Call
-                </a>
-              )}
-              {order.Recording_url && (
-                <a href={order.Recording_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 bg-white text-[#0066cc] text-[13px] font-medium rounded-full px-4 py-2 hairline hover:bg-[#f0f0f5] transition-colors">
-                  <PhoneCall className="w-3.5 h-3.5" /> Recording
-                </a>
-              )}
-              {order.transcript_url && (
-                <a href={order.transcript_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 bg-white text-[#6e6e73] text-[13px] font-medium rounded-full px-4 py-2 hairline hover:bg-[#f0f0f5] transition-colors">
-                  <ExternalLink className="w-3.5 h-3.5" /> Transcript
-                </a>
-              )}
-              <button className="inline-flex items-center gap-1.5 bg-[#0066cc] text-white text-[13px] font-medium rounded-full px-4 py-2 active:scale-95 transition-transform">
-                <PhoneCall className="w-3.5 h-3.5" /> Trigger Call
-              </button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
+          </div>
+        )}
+      </div>
+      <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
+        {order.Recording_url && (
+          <a href={order.Recording_url} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-1.5 bg-white hairline text-[#0066cc] text-[13px] font-medium rounded-full px-4 py-2 hover:bg-[#f0f0f5] transition-colors">
+            <PhoneCall className="w-3.5 h-3.5" /> Recording
+          </a>
+        )}
+        {order.transcript_url && (
+          <a href={order.transcript_url} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-1.5 bg-white hairline text-[#6e6e73] text-[13px] font-medium rounded-full px-4 py-2 hover:bg-[#f0f0f5] transition-colors">
+            <ExternalLink className="w-3.5 h-3.5" /> Transcript
+          </a>
+        )}
+        <button className="inline-flex items-center gap-1.5 bg-[#0066cc] text-white text-[13px] font-medium rounded-full px-4 py-2 active:scale-95 transition-transform">
+          <PhoneCall className="w-3.5 h-3.5" /> Trigger Call
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function CodRow({ order, selected, onSelect }: { order: CodOrder; selected: boolean; onSelect: () => void }) {
+  const statusKey = (order.status ?? "pending").toLowerCase()
+  const S = COD_STATUS[statusKey] ?? { label: order.status ?? "—", color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
+  const orderId = order.order_number ?? `#${order["order id"] ?? "—"}`
+
+  return (
+    <tr
+      className={cn("border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer", selected && "bg-[#0066cc]/5")}
+      onClick={onSelect}
+    >
+      <td className="px-4 py-3.5">
+        <p className="text-[13px] font-semibold text-[#1d1d1f]">{orderId}</p>
+        <p className="text-[11px] text-[#6e6e73]">{order.order_date ? new Date(order.order_date).toLocaleDateString("en-IN") : "—"}</p>
+      </td>
+      <td className="px-4 py-3.5 hidden sm:table-cell">
+        <p className="text-[13px] font-medium text-[#1d1d1f]">{order.customer_name ?? "—"}</p>
+        <p className="text-[11px] text-[#6e6e73]">{order.phone ?? "—"}</p>
+      </td>
+      <td className="px-4 py-3.5 hidden lg:table-cell">
+        <p className="text-[13px] text-[#1d1d1f] truncate max-w-[180px]">{order.product_name ?? "—"}</p>
+        <p className="text-[11px] text-[#6e6e73]">{order.city ?? "—"}</p>
+      </td>
+      <td className="px-4 py-3.5">
+        <p className="text-[14px] font-semibold text-[#1d1d1f]">₹{(order.total_amount ?? 0).toLocaleString("en-IN")}</p>
+      </td>
+      <td className="px-4 py-3.5">
+        <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", S.bg, S.color)}>{S.label}</span>
+      </td>
+      <td className="px-4 py-3.5 hidden md:table-cell">
+        <code className="text-[11px] font-mono text-[#6e6e73]">{order.RUN_ID ?? "—"}</code>
+      </td>
+    </tr>
   )
 }
 
@@ -173,84 +210,102 @@ const CALL_STATUS: Record<string, { label: string; color: string; bg: string }> 
   IN_PROGRESS: { label: "In Progress",color: "text-[#0066cc]", bg: "bg-[#0066cc]/10" },
 }
 
-function CartRow({ row }: { row: CartItem }) {
-  const [expanded, setExpanded] = useState(false)
+function CartDetailPanel({ row, onClose }: { row: CartItem; onClose: () => void }) {
   const callSt = row["call status"] ?? ""
   const CS = CALL_STATUS[callSt] ?? (callSt ? { label: callSt, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" } : null)
-
   return (
-    <>
-      <tr
-        className="border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer"
-        onClick={() => setExpanded(e => !e)}
-      >
-        <td className="px-4 py-3.5">
-          <p className="text-[13px] font-medium text-[#1d1d1f]">{row.customer_name ?? "—"}</p>
-          <p className="text-[11px] text-[#6e6e73]">{row.phone ?? "—"}</p>
-        </td>
-        <td className="px-4 py-3.5 hidden lg:table-cell">
-          <p className="text-[13px] text-[#1d1d1f] truncate max-w-[200px]">{row.product_name ?? "—"}</p>
-          <p className="text-[11px] text-[#6e6e73]">{row.variant ?? "—"}</p>
-        </td>
-        <td className="px-4 py-3.5">
-          <p className="text-[14px] font-semibold text-[#1d1d1f]">
-            ₹{(row.total_amount ?? 0).toLocaleString("en-IN")}
-          </p>
-        </td>
-        <td className="px-4 py-3.5 hidden sm:table-cell">
-          <span className="text-[12px] text-[#6e6e73]">
-            {row.order_date ? new Date(row.order_date).toLocaleDateString("en-IN") : "—"}
-          </span>
-        </td>
-        <td className="px-4 py-3.5">
-          {CS && (
-            <span className={cn("inline-flex text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>
-              {CS.label}
-            </span>
-          )}
-        </td>
-        <td className="px-4 py-3.5">
-          {expanded ? <ChevronUp className="w-4 h-4 text-[#6e6e73]" /> : <ChevronDown className="w-4 h-4 text-[#6e6e73]" />}
-        </td>
-      </tr>
-      {expanded && (
-        <tr className="bg-[#f5f5f7]">
-          <td colSpan={6} className="px-5 py-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-              {[
-                ["Email", row.email ?? "—"],
-                ["SKU", row.sku ?? "—"],
-                ["Qty", row.quantity ?? "—"],
-                ["Unit Price", row.product_price ? `₹${row.product_price}` : "—"],
-                ["Shipping", row.shipping_charge ? `₹${row.shipping_charge}` : "—"],
-                ["Tax", row.tax ? `₹${row.tax}` : "—"],
-                ["Address", [row.address_line1, row.address_line2, row.city, row.state, row.pincode].filter(Boolean).join(", ") || "—"],
-                ["WA Status", row["WhatsApp Status"] ?? "—"],
-              ].map(([k, v]) => (
-                <div key={k} className="bg-white rounded-xl px-3.5 py-2.5 hairline">
-                  <p className="text-[11px] text-[#6e6e73]">{k}</p>
-                  <p className="text-[12px] font-medium text-[#1d1d1f] truncate">{v}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {row.abandoned_checkout_url && (
-                <a href={row.abandoned_checkout_url} target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 bg-white text-[#0066cc] text-[13px] font-medium rounded-full px-4 py-2 hairline hover:bg-[#f0f0f5] transition-colors">
-                  <ExternalLink className="w-3.5 h-3.5" /> Open Checkout
-                </a>
-              )}
-              <button className="inline-flex items-center gap-1.5 bg-[#25D366] text-white text-[13px] font-medium rounded-full px-4 py-2 active:scale-95 transition-transform">
-                <MessageCircle className="w-3.5 h-3.5" /> Send WA Recovery
-              </button>
-              <button className="inline-flex items-center gap-1.5 bg-[#0066cc] text-white text-[13px] font-medium rounded-full px-4 py-2 active:scale-95 transition-transform">
-                <PhoneCall className="w-3.5 h-3.5" /> Trigger Call
-              </button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
+    <div className="bg-white rounded-2xl hairline overflow-hidden flex flex-col h-full">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06]">
+        <div>
+          <p className="text-[15px] font-semibold text-[#1d1d1f]">{row.customer_name ?? "—"}</p>
+          <p className="text-[12px] text-[#6e6e73]">{row.phone ?? "—"} · {row.order_date ? new Date(row.order_date).toLocaleDateString("en-IN") : "—"}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {CS && <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>{CS.label}</span>}
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73]"><X className="w-4 h-4" /></button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <div>
+          <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Product</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              ["Product", row.product_name ?? "—"],
+              ["Variant", row.variant ?? "—"],
+              ["SKU", row.sku ?? "—"],
+              ["Qty", row.quantity ?? "—"],
+              ["Unit Price", row.product_price ? `₹${row.product_price}` : "—"],
+              ["Shipping", row.shipping_charge ? `₹${row.shipping_charge}` : "—"],
+              ["Tax", row.tax ? `₹${row.tax}` : "—"],
+              ["Email", row.email ?? "—"],
+            ].map(([k, v]) => (
+              <div key={k} className="bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+                <p className="text-[11px] text-[#6e6e73]">{k}</p>
+                <p className="text-[13px] font-medium text-[#1d1d1f] truncate">{v}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Delivery</p>
+          <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-3">
+            <p className="text-[13px] text-[#1d1d1f]">
+              {[row.address_line1, row.address_line2, row.city, row.state, row.pincode].filter(Boolean).join(", ") || "—"}
+            </p>
+          </div>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">WhatsApp</p>
+          <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+            <p className="text-[11px] text-[#6e6e73]">Status</p>
+            <p className="text-[13px] font-medium text-[#1d1d1f]">{row["WhatsApp Status"] ?? "—"}</p>
+          </div>
+        </div>
+      </div>
+      <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
+        {row.abandoned_checkout_url && (
+          <a href={row.abandoned_checkout_url} target="_blank" rel="noreferrer"
+            className="inline-flex items-center gap-1.5 bg-white hairline text-[#0066cc] text-[13px] font-medium rounded-full px-4 py-2 hover:bg-[#f0f0f5] transition-colors">
+            <ExternalLink className="w-3.5 h-3.5" /> Open Checkout
+          </a>
+        )}
+        <button className="inline-flex items-center gap-1.5 bg-[#25D366] text-white text-[13px] font-medium rounded-full px-4 py-2 active:scale-95 transition-transform">
+          <MessageCircle className="w-3.5 h-3.5" /> WhatsApp Recovery
+        </button>
+        <button className="inline-flex items-center gap-1.5 bg-[#0066cc] text-white text-[13px] font-medium rounded-full px-4 py-2 active:scale-95 transition-transform">
+          <PhoneCall className="w-3.5 h-3.5" /> Trigger Call
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function CartRow({ row, selected, onSelect }: { row: CartItem; selected: boolean; onSelect: () => void }) {
+  const callSt = row["call status"] ?? ""
+  const CS = CALL_STATUS[callSt] ?? (callSt ? { label: callSt, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" } : null)
+  return (
+    <tr
+      className={cn("border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer", selected && "bg-[#0066cc]/5")}
+      onClick={onSelect}
+    >
+      <td className="px-4 py-3.5">
+        <p className="text-[13px] font-medium text-[#1d1d1f]">{row.customer_name ?? "—"}</p>
+        <p className="text-[11px] text-[#6e6e73]">{row.phone ?? "—"}</p>
+      </td>
+      <td className="px-4 py-3.5 hidden lg:table-cell">
+        <p className="text-[13px] text-[#1d1d1f] truncate max-w-[180px]">{row.product_name ?? "—"}</p>
+        <p className="text-[11px] text-[#6e6e73]">{row.variant ?? "—"}</p>
+      </td>
+      <td className="px-4 py-3.5">
+        <p className="text-[14px] font-semibold text-[#1d1d1f]">₹{(row.total_amount ?? 0).toLocaleString("en-IN")}</p>
+      </td>
+      <td className="px-4 py-3.5 hidden sm:table-cell">
+        <span className="text-[12px] text-[#6e6e73]">{row.order_date ? new Date(row.order_date).toLocaleDateString("en-IN") : "—"}</span>
+      </td>
+      <td className="px-4 py-3.5">
+        {CS && <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>{CS.label}</span>}
+      </td>
+    </tr>
   )
 }
 
@@ -263,6 +318,8 @@ export function ShopifyTab() {
   const [subTab, setSubTab] = useState<ShopifySubTab>("cod")
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
+  const [selectedCod, setSelectedCod] = useState<CodOrder | null>(null)
+  const [selectedCart, setSelectedCart] = useState<CartItem | null>(null)
 
   const { data: codData, isLoading: codLoading } = useSWR(
     subTab === "cod"
@@ -285,6 +342,8 @@ export function ShopifyTab() {
   const isLoading = subTab === "cod" ? codLoading : cartLoading
   const total = subTab === "cod" ? (codData?.count ?? 0) : (cartData?.count ?? 0)
 
+  const hasPanel = subTab === "cod" ? !!selectedCod : !!selectedCart
+
   return (
     <div className="space-y-4">
       {/* Sub-tab switcher */}
@@ -292,7 +351,7 @@ export function ShopifyTab() {
         {([["cod", "COD Confirmation"], ["cart", "Add to Cart"]] as [ShopifySubTab, string][]).map(([id, label]) => (
           <button
             key={id}
-            onClick={() => { setSubTab(id); setPage(1); setSearch("") }}
+            onClick={() => { setSubTab(id as ShopifySubTab); setPage(1); setSearch(""); setSelectedCod(null); setSelectedCart(null) }}
             className={cn(
               "px-5 py-2 rounded-xl text-[13px] font-medium transition-all",
               subTab === id ? "bg-[#1d1d1f] text-white shadow-sm" : "text-[#6e6e73] hover:bg-[#f5f5f7]"
@@ -325,8 +384,9 @@ export function ShopifyTab() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl hairline overflow-hidden">
+      {/* Table + side panel */}
+      <div className={cn("gap-4", hasPanel ? "grid grid-cols-1 lg:grid-cols-5" : "")}>
+      <div className={cn("bg-white rounded-2xl hairline overflow-hidden", hasPanel ? "lg:col-span-3" : "")}>
         <div className="overflow-x-auto">
           {subTab === "cod" ? (
             <table className="w-full">
@@ -339,7 +399,6 @@ export function ShopifyTab() {
                     { label: "Amount" },
                     { label: "Status" },
                     { label: "Run ID", md: true },
-                    { label: "" },
                   ].map((h, i) => (
                     <th key={i} className={cn(
                       "px-4 py-3 text-left text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider",
@@ -364,9 +423,16 @@ export function ShopifyTab() {
                     </tr>
                   ))
                 ) : codOrders.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-12 text-center text-[14px] text-[#6e6e73]">No COD orders found</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-12 text-center text-[14px] text-[#6e6e73]">No COD orders found</td></tr>
                 ) : (
-                  codOrders.map(o => <CodRow key={o.id} order={o} />)
+                  codOrders.map(o => (
+                    <CodRow
+                      key={o["order id"]}
+                      order={o}
+                      selected={selectedCod?.["order id"] === o["order id"]}
+                      onSelect={() => setSelectedCod(selectedCod?.["order id"] === o["order id"] ? null : o)}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
@@ -380,7 +446,6 @@ export function ShopifyTab() {
                       { label: "Cart Value" },
                       { label: "Date", sm: true },
                       { label: "Call Status" },
-                      { label: "" },
                   ].map((h, i) => (
                     <th key={i} className={cn(
                       "px-4 py-3 text-left text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider",
@@ -404,9 +469,16 @@ export function ShopifyTab() {
                     </tr>
                   ))
                 ) : cartRows.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-12 text-center text-[14px] text-[#6e6e73]">No abandoned carts found</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-12 text-center text-[14px] text-[#6e6e73]">No abandoned carts found</td></tr>
                 ) : (
-                  cartRows.map((r, i) => <CartRow key={r["checkout id"] ?? i} row={r} />)
+                  cartRows.map((r, i) => (
+                    <CartRow
+                      key={r["checkout id"] ?? i}
+                      row={r}
+                      selected={selectedCart?.["checkout id"] === r["checkout id"]}
+                      onSelect={() => setSelectedCart(selectedCart?.["checkout id"] === r["checkout id"] ? null : r)}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
@@ -434,6 +506,19 @@ export function ShopifyTab() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Detail panel (right column when a row is selected) */}
+      {hasPanel && (
+        <div className="lg:col-span-2 h-fit lg:sticky lg:top-0">
+          {subTab === "cod" && selectedCod && (
+            <CodDetailPanel order={selectedCod} onClose={() => setSelectedCod(null)} />
+          )}
+          {subTab === "cart" && selectedCart && (
+            <CartDetailPanel row={selectedCart} onClose={() => setSelectedCart(null)} />
+          )}
+        </div>
+      )}
       </div>
     </div>
   )
