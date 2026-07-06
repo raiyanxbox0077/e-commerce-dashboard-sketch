@@ -378,8 +378,32 @@ export function ProfileTab() {
                 <TextField label="Store Domain" value={shopifyDomain} onChange={setShopifyDomain} hint="e.g. my-store.myshopify.com" />
                 <TextField label="Supabase URL" value={clientSupabaseUrl} onChange={setClientSupabaseUrl} hint="e.g. https://iaisgphpjgwmrzkffvgu.supabase.co (not the dashboard URL)" />
                 <SecretField label="Anon Key" value={clientSupabaseKey} onChange={setClientSupabaseKey} hint="Client project anon key" />
-                <TextField label="COD Table Name" value={codTableName} onChange={setCodTableName} hint={`Exact table name in your Supabase (default: cod_confirmation)`} />
-                <TextField label="Cart Table Name" value={cartTableName} onChange={setCartTableName} hint={`Exact table name in your Supabase (default: E-commerce add to cart)`} />
+                {/* COD Table */}
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">COD Table Name</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={codTableName}
+                      onChange={e => setCodTableName(e.target.value)}
+                      placeholder="e.g. cod_confirmation"
+                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                    />
+                    <DetectTablesButton onSelect={setCodTableName} supabaseUrl={clientSupabaseUrl} supabaseKey={clientSupabaseKey} label="COD" />
+                  </div>
+                </div>
+                {/* Cart Table */}
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Cart Table Name</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={cartTableName}
+                      onChange={e => setCartTableName(e.target.value)}
+                      placeholder="e.g. E-commerce add to cart"
+                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                    />
+                    <DetectTablesButton onSelect={setCartTableName} supabaseUrl={clientSupabaseUrl} supabaseKey={clientSupabaseKey} label="Cart" />
+                  </div>
+                </div>
               </div>
 
               {/* Razorpay */}
@@ -444,6 +468,59 @@ export function ProfileTab() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function DetectTablesButton({
+  onSelect, supabaseUrl, supabaseKey, label,
+}: { onSelect: (t: string) => void; supabaseUrl: string; supabaseKey: string; label: string }) {
+  const [tables, setTables] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [err, setErr] = useState("")
+
+  async function detect() {
+    if (!supabaseUrl || !supabaseKey) { setErr("Save Supabase URL and Anon Key first"); return }
+    setLoading(true); setErr(""); setOpen(false)
+    try {
+      const res = await fetch("/api/shopify/tables")
+      const json = await res.json()
+      if (json.error) { setErr(json.error); return }
+      setTables(json.tables ?? [])
+      setOpen(true)
+    } catch { setErr("Failed to fetch tables") }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={detect}
+        disabled={loading}
+        className="flex items-center gap-1.5 text-[12px] font-medium text-[#0066cc] hover:text-[#0055b3] disabled:opacity-50 whitespace-nowrap px-3 py-2.5 bg-[#f5f5f7] rounded-xl transition-colors"
+      >
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+        Detect
+      </button>
+      {err && <p className="absolute left-0 top-full mt-1 text-[11px] text-red-600 whitespace-nowrap z-10">{err}</p>}
+      {open && tables.length > 0 && (
+        <div className="absolute right-0 top-full mt-1 bg-white border border-[rgba(0,0,0,0.1)] rounded-xl shadow-lg z-20 min-w-[220px] max-h-60 overflow-y-auto py-1">
+          <p className="px-3 py-1.5 text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider">Select {label} table</p>
+          {tables.map(t => (
+            <button
+              key={t}
+              onClick={() => { onSelect(t); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-[13px] text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors font-mono"
+            >
+              {t}
+            </button>
+          ))}
+          <button onClick={() => setOpen(false)} className="w-full text-left px-3 py-2 text-[12px] text-[#6e6e73] hover:bg-[#f5f5f7] border-t border-[rgba(0,0,0,0.06)]">
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   )
 }
