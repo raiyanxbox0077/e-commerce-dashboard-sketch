@@ -11,15 +11,16 @@ const fetcher = (url: string) => fetch(url).then(r => r.json())
 type WaSubTab = "chats" | "contacts"
 
 interface BotSailorChat {
-  id: string | number
+  id?: string | number
   subscriber_id?: number
-  chat_id?: string
+  chat_id?: string          // BotSailor uses chat_id as the phone number (e.g. "919923542625")
   first_name?: string
   last_name?: string
   phone?: string
   last_message?: string
   last_message_time?: string
   unread_count?: number
+  unseen_count?: number     // BotSailor's actual field name
   bot_status?: string
 }
 
@@ -94,19 +95,21 @@ export function WhatsAppTab() {
     if (!chatsData) return
     const raw = chatsData?.message ?? chatsData?.data ?? chatsData?.chats
     const incoming: BotSailorChat[] = Array.isArray(raw) ? raw : []
+    console.log("[v0] WA chatsData received — chatPage:", chatPage, "incoming:", incoming.length, "keys:", Object.keys(chatsData))
 
     if (incoming.length === 0) {
-      // No results from this page — no more to load
       setHasMoreChats(false)
       return
     }
 
     if (chatPage === 1) {
+      console.log("[v0] WA setting page 1 chats:", incoming.length)
       setAllChats(incoming)
     } else {
       setAllChats(prev => {
         const existingIds = new Set(prev.map(c => String(c.subscriber_id ?? c.id)))
         const fresh = incoming.filter(c => !existingIds.has(String(c.subscriber_id ?? c.id)))
+        console.log("[v0] WA appending page", chatPage, "fresh:", fresh.length, "prev total:", prev.length)
         return [...prev, ...fresh]
       })
     }
@@ -114,9 +117,7 @@ export function WhatsAppTab() {
     if (incoming.length < CHATS_PER_PAGE) {
       setHasMoreChats(false)
     }
-  // chatsData identity changes each time a new page loads
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatsData])
+  }, [chatsData, chatPage])
 
   // Reset when switching sub-tabs or search changes
   useEffect(() => {
@@ -152,7 +153,10 @@ export function WhatsAppTab() {
     : null
 
   const filteredChats = search
-    ? chats.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(search.toLowerCase()) || (c.phone ?? "").includes(search))
+    ? chats.filter(c =>
+        `${c.first_name ?? ""} ${c.last_name ?? ""}`.toLowerCase().includes(search.toLowerCase()) ||
+        (c.chat_id ?? c.phone ?? "").includes(search)
+      )
     : chats
 
   const selectedChat = chats.find(c => c.subscriber_id === selectedId || c.id === selectedId)
@@ -240,7 +244,7 @@ export function WhatsAppTab() {
           {/* Chat list */}
           {subTab === "chats" && (
             <div className="flex-1 overflow-y-auto">
-              {chatsLoading && chatPage === 1 ? (
+              {(chatsLoading || (chatPage === 1 && allChats.length === 0 && !waError)) ? (
                 [...Array(6)].map((_, i) => (
                   <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-black/[0.04]">
                     <div className="w-10 h-10 rounded-full bg-gray-100 animate-pulse shrink-0" />
@@ -251,12 +255,12 @@ export function WhatsAppTab() {
                   </div>
                 ))
               ) : filteredChats.length === 0 ? (
-                <div className="text-center py-12 text-[13px] text-[#6e6e73]">No chats found</div>
+                <div className="text-center py-12 text-[13px] text-[#6e6e73]">{search ? "No chats match your search" : "No chats found"}</div>
               ) : filteredChats.map(chat => {
                 const sid = chat.subscriber_id ?? chat.id
                 const firstName = chat.first_name ?? ""
                 const lastName = chat.last_name ?? ""
-                const unread = chat.unread_count ?? 0
+                const unread = chat.unseen_count ?? chat.unread_count ?? 0
                 return (
                   <button
                     key={sid}
