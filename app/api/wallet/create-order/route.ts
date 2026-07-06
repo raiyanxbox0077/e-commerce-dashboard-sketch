@@ -39,8 +39,16 @@ export async function POST(req: Request) {
       notes: { user_id: user.id },
     })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to create Razorpay order'
-    return NextResponse.json({ error: message }, { status: 502 })
+    // Razorpay SDK errors have a nested .error object with description, not err.message
+    const rzpErr = err as { error?: { description?: string; code?: string }; statusCode?: number; message?: string }
+    const message =
+      rzpErr?.error?.description ||
+      rzpErr?.message ||
+      'Failed to create Razorpay order'
+    const code = rzpErr?.error?.code || null
+    const statusCode = rzpErr?.statusCode || 502
+    console.error('[v0] Razorpay create-order error:', JSON.stringify(rzpErr))
+    return NextResponse.json({ error: message, code }, { status: statusCode >= 400 ? statusCode : 502 })
   }
 
   // key_id is the public Razorpay key — safe to return to the client
