@@ -31,7 +31,7 @@ export async function GET() {
   let cartCount = 0
 
   try {
-    const codTable = tenant?.cod_table_name || 'cod_confirmation'
+    const codTable = tenant?.cod_table_name || 'E-commerce COD confimation'
     const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'
     const [codRes, cartRes] = await Promise.all([
       supabase.from(codTable).select('*', { count: 'exact', head: true }),

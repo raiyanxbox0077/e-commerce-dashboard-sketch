@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const limit = parseInt(searchParams.get('limit') ?? '20')
   const search = searchParams.get('search') ?? ''
 
-  const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'
+  const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'  // exact table name in your Supabase
 
   let query = supabase
     .from(cartTable)

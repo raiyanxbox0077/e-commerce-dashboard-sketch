@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -6,13 +6,30 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('tenants')
     .select('*')
     .eq('user_id', user.id)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Auto-create tenant row if it doesn't exist yet (e.g. trigger not set up)
+  if (error?.code === 'PGRST116' || !data) {
+    const admin = createAdminClient()
+    const { data: created, error: createError } = await admin
+      .from('tenants')
+      .insert({
+        user_id: user.id,
+        email: user.email,
+        name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '',
+      })
+      .select()
+      .single()
+    if (createError) return NextResponse.json({ error: createError.message }, { status: 500 })
+    data = created
+  } else if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
   return NextResponse.json(data)
 }
 

@@ -19,10 +19,10 @@ export async function GET(req: Request) {
   const search = searchParams.get('search') ?? ''
   const status = searchParams.get('status') ?? ''
 
-  // Use tenant-configured table name or try common variations
+  // Use tenant-configured table name or the exact table name from this project
   const tableNames = [
     ...(tenant?.cod_table_name ? [tenant.cod_table_name] : []),
-    'cod_confirmation', 'COD Confirmation', 'COD_confirmation', 'cod_confirmations', 'cod_orders',
+    'E-commerce COD confimation',
   ]
 
   let data = null, error = null, count = null
