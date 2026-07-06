@@ -8,14 +8,21 @@ async function getTenantVoiceConfig(supabase: Awaited<ReturnType<typeof createCl
     .eq('user_id', userId)
     .single()
   // Attempt to read new multi-workflow columns separately — they may not exist yet if the
-  // user hasn't run the migration SQL yet. .catch() ensures no crash if the column is missing.
-  const { data: wfData } = await (supabase
-    .from('tenants')
-    .select('voice_workflow_ids, voice_workflow_id')
-    .eq('user_id', userId)
-    .single() as Promise<{ data: Record<string, string> | null; error: unknown }>)
-    .catch(() => ({ data: null }))
-  const raw: string = wfData?.voice_workflow_ids ?? wfData?.voice_workflow_id ?? ''
+  // user hasn't run the migration SQL yet. Use try/catch since Supabase queries are not
+  // native Promises and do not have a .catch() method.
+  let raw = ''
+  try {
+    const { data: wfData } = await supabase
+      .from('tenants')
+      .select('voice_workflow_ids, voice_workflow_id')
+      .eq('user_id', userId)
+      .single()
+    raw = (wfData as Record<string, string> | null)?.voice_workflow_ids
+      ?? (wfData as Record<string, string> | null)?.voice_workflow_id
+      ?? ''
+  } catch {
+    // columns don't exist yet — continue with empty workflow list
+  }
   const workflowIds: string[] = raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : []
   return {
     apiKey: data?.voice_api_key ?? null,
