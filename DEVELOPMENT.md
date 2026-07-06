@@ -131,6 +131,13 @@ The tenant may have `http://localhost:8000` saved as `voice_base_url` from earli
 
 ## Deployment
 
+### Vercel (default)
+
 The project is connected to Vercel. Every push to the head branch deploys automatically. The `main` branch is the production branch.
 
 **Do not push directly to `main`**. Work on feature branches and merge via PR.
+
+### Self-host on Hetzner
+
+See **[DEPLOY.md](./DEPLOY.md)** for the full copy-paste guide.
+Quick summary: Node 20 + pnpm + PM2, app runs on port **3721** to avoid conflicts.
