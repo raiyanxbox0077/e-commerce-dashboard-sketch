@@ -11,9 +11,9 @@ export default function DashboardBlueprint() {
   const [profileOpen, setProfileOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white font-sans">
+    <div className="min-h-screen bg-nightcard text-white font-sans">
       {/* ── TOP NAV ── */}
-      <header className="border-b border-white/10 px-6 py-3 flex items-center justify-between bg-[#161b22] sticky top-0 z-30">
+      <header className="border-b border-white/10 px-6 py-3 flex items-center justify-between bg-night2 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-md bg-emerald-500 flex items-center justify-center">
             <svg viewBox="0 0 20 20" fill="white" className="w-4 h-4">
@@ -37,7 +37,7 @@ export default function DashboardBlueprint() {
           </button>
 
           {/* Notification bell */}
-          <button className="relative w-8 h-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all">
+          <button className="relative w-8 h-8 rounded-lg border border-white/10 bg-card/5 flex items-center justify-center hover:bg-card/10 transition-all">
             <BellIcon className="w-4 h-4 text-white/50" />
             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">3</span>
           </button>
@@ -45,7 +45,7 @@ export default function DashboardBlueprint() {
           {/* Source badges */}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Dograh</span>
-            <span className="text-[10px] px-2 py-1 rounded bg-[#25d366]/10 text-[#25d366] border border-[#25d366]/20">BotSailor</span>
+            <span className="text-[10px] px-2 py-1 rounded bg-wa/10 text-wa border border-wa/20">BotSailor</span>
             <span className="text-[10px] px-2 py-1 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">Supabase</span>
           </div>
 
@@ -61,7 +61,7 @@ export default function DashboardBlueprint() {
 
       <div className="flex h-[calc(100vh-53px)]">
         {/* ── LEFT SIDEBAR ── */}
-        <aside className="w-56 border-r border-white/10 bg-[#161b22] flex flex-col py-4 shrink-0">
+        <aside className="w-56 border-r border-white/10 bg-night2 flex flex-col py-4 shrink-0">
           <nav className="flex flex-col gap-1 px-3">
             {(
               [
@@ -77,7 +77,7 @@ export default function DashboardBlueprint() {
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
                   activeNav === item.id
                     ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                    : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
+                    : "text-white/60 hover:text-white hover:bg-card/5 border border-transparent"
                 }`}
               >
                 <item.icon />
@@ -105,7 +105,7 @@ export default function DashboardBlueprint() {
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
                   activeNav === item.id
                     ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                    : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
+                    : "text-white/60 hover:text-white hover:bg-card/5 border border-transparent"
                 }`}
               >
                 <item.icon />
@@ -122,14 +122,14 @@ export default function DashboardBlueprint() {
             <div className="text-[10px] text-white/25 uppercase tracking-widest mb-2">Data Sources</div>
             <div className="space-y-1.5">
               <LegendItem color="bg-emerald-500" label="Dograh API" sub="Runs · Recordings · Transcripts" />
-              <LegendItem color="bg-[#25d366]"   label="BotSailor API" sub="Subscribers · Chat · Inbox" />
+              <LegendItem color="bg-wa"   label="BotSailor API" sub="Subscribers · Chat · Inbox" />
               <LegendItem color="bg-orange-400"  label="Supabase DB" sub="COD Orders · Add to Cart" />
             </div>
           </div>
         </aside>
 
         {/* ── MAIN CONTENT ── */}
-        <main className="flex-1 overflow-y-auto bg-[#0d1117]">
+        <main className="flex-1 overflow-y-auto bg-nightcard">
           {activeNav === "overview"  && <OverviewTab />}
           {activeNav === "calls"     && <CallsTab />}
           {activeNav === "shopify"   && (
@@ -263,7 +263,7 @@ function CallsTab() {
 
       {/* Filters + search */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 bg-[#161b22] border border-white/10 rounded-lg px-3 py-2 flex-1 max-w-xs">
+        <div className="flex items-center gap-2 bg-night2 border border-white/10 rounded-lg px-3 py-2 flex-1 max-w-xs">
           <svg className="w-3.5 h-3.5 text-white/30 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -278,7 +278,7 @@ function CallsTab() {
               className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-medium transition-all capitalize ${
                 filterStatus === s
                   ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
-                  : "border-white/10 text-white/40 hover:text-white/70 hover:bg-white/5"
+                  : "border-white/10 text-white/40 hover:text-white/70 hover:bg-card/5"
               }`}
             >
               {s === "all" ? "All Status" : s.replace("-", " ")}
@@ -294,7 +294,7 @@ function CallsTab() {
               className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-medium transition-all capitalize ${
                 filterType === t
                   ? "bg-blue-500/15 text-blue-400 border-blue-500/25"
-                  : "border-white/10 text-white/40 hover:text-white/70 hover:bg-white/5"
+                  : "border-white/10 text-white/40 hover:text-white/70 hover:bg-card/5"
               }`}
             >
               {t === "all" ? "All Types" : t}
@@ -302,7 +302,7 @@ function CallsTab() {
           ))}
         </div>
 
-        <button className="ml-auto text-[10px] px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/50 hover:text-white/80 transition-all flex items-center gap-1.5">
+        <button className="ml-auto text-[10px] px-3 py-1.5 rounded-lg border border-white/10 bg-card/5 text-white/50 hover:text-white/80 transition-all flex items-center gap-1.5">
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
@@ -311,7 +311,7 @@ function CallsTab() {
       </div>
 
       {/* Runs table */}
-      <div className="border border-white/10 rounded-xl bg-[#161b22] overflow-hidden">
+      <div className="border border-white/10 rounded-xl bg-night2 overflow-hidden">
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
           <span className="text-xs font-medium text-white/70">
             {filtered.length} runs — <span className="font-mono text-[10px] text-white/40">GET /api/v1/workflow/{"{id}"}/runs</span>
@@ -333,14 +333,14 @@ function CallsTab() {
                 <>
                   <tr
                     key={r.id}
-                    className="border-b border-white/5 hover:bg-white/3 transition-colors cursor-pointer"
+                    className="border-b border-white/5 hover:bg-card/3 transition-colors cursor-pointer"
                     onClick={() => setExpandedRun(expandedRun === r.id ? null : r.id)}
                   >
                     <td className="py-2.5 px-3">
                       <span className="font-mono text-emerald-400 text-[10px] font-semibold">{r.id}</span>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/8 text-white/60">{r.workflow}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-card/8 text-white/60">{r.workflow}</span>
                     </td>
                     <td className="py-2.5 px-3">
                       <CallTypeBadge type={r.type} />
@@ -361,7 +361,7 @@ function CallsTab() {
                   </tr>
                   {/* Expanded run detail row */}
                   {expandedRun === r.id && (
-                    <tr key={`${r.id}-expand`} className="bg-[#1c2128]">
+                    <tr key={`${r.id}-expand`} className="bg-nightborder">
                       <td colSpan={10} className="px-4 pb-4 pt-2">
                         <RunDetailExpanded run={r} />
                       </td>
@@ -410,7 +410,7 @@ function RunDetailExpanded({ run }: { run: { id: string; workflow: string; statu
           { label: "Is Completed",    value: run.status === "completed" ? "Yes" : "No", color: run.status === "completed" ? "text-emerald-400" : "text-red-400" },
           { label: "Inbound/Outbound",value: "outbound",                     color: "text-white/70" },
         ].map(f => (
-          <div key={f.label} className="bg-[#0d1117] rounded-lg p-2.5">
+          <div key={f.label} className="bg-nightcard rounded-lg p-2.5">
             <div className="text-[9px] text-white/30 uppercase tracking-wider mb-1">{f.label}</div>
             <div className={`text-[11px] font-medium ${f.color}`}>{f.value}</div>
           </div>
@@ -418,11 +418,11 @@ function RunDetailExpanded({ run }: { run: { id: string; workflow: string; statu
       </div>
 
       {/* Gathered context */}
-      <div className="bg-[#0d1117] rounded-lg p-3">
+      <div className="bg-nightcard rounded-lg p-3">
         <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">gathered_context (from Dograh)</div>
         <div className="flex flex-wrap gap-2">
           {["customer_intent", "order_status", "address_confirmed", "payment_preference", "callback_requested", "sentiment"].map(k => (
-            <div key={k} className="flex items-center gap-1.5 bg-[#161b22] border border-white/10 rounded-md px-2 py-1">
+            <div key={k} className="flex items-center gap-1.5 bg-night2 border border-white/10 rounded-md px-2 py-1">
               <span className="text-[9px] text-white/40 font-mono">{k}:</span>
               <span className="text-[9px] text-emerald-400 font-medium">...</span>
             </div>
@@ -431,11 +431,11 @@ function RunDetailExpanded({ run }: { run: { id: string; workflow: string; statu
       </div>
 
       {/* Initial context */}
-      <div className="bg-[#0d1117] rounded-lg p-3">
+      <div className="bg-nightcard rounded-lg p-3">
         <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">initial_context (sent to Dograh)</div>
         <div className="flex flex-wrap gap-2">
           {["customer_name", "order_id", "product_name", "amount", "address", "phone"].map(k => (
-            <div key={k} className="flex items-center gap-1.5 bg-[#161b22] border border-white/10 rounded-md px-2 py-1">
+            <div key={k} className="flex items-center gap-1.5 bg-night2 border border-white/10 rounded-md px-2 py-1">
               <span className="text-[9px] text-white/40 font-mono">{k}:</span>
               <span className="text-[9px] text-blue-400 font-medium">...</span>
             </div>
@@ -471,7 +471,7 @@ function ShopifyTab({ activeShopify, setActiveShopify }: { activeShopify: Shopif
             onClick={() => setActiveShopify(t.id)}
             className={`px-4 py-2.5 text-xs font-medium rounded-t-lg border transition-all ${
               activeShopify === t.id
-                ? "bg-[#161b22] border-white/15 border-b-[#161b22] text-white -mb-px"
+                ? "bg-night2 border-white/15 border-b-night2 text-white -mb-px"
                 : "border-transparent text-white/40 hover:text-white/70"
             }`}
           >
@@ -502,7 +502,7 @@ function CODView() {
         <MiniStat label="Cancelled"  value="35"  color="text-red-400" />
       </div>
 
-      <div className="border border-white/10 rounded-xl bg-[#161b22] overflow-hidden">
+      <div className="border border-white/10 rounded-xl bg-night2 overflow-hidden">
         <div className="px-4 py-3 border-b border-white/10 text-xs text-white/50 font-medium">
           COD Orders — linked to Dograh RUN_ID
         </div>
@@ -517,7 +517,7 @@ function CODView() {
             </thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                <tr key={r.id} className="border-b border-white/5 hover:bg-card/3 transition-colors">
                   <td className="py-2.5 px-3 text-orange-400 font-medium">{r.order}</td>
                   <td className="py-2.5 px-3">{r.name}</td>
                   <td className="py-2.5 px-3 text-white/50">{r.phone}</td>
@@ -571,7 +571,7 @@ function CartView() {
         <MiniStat label="Revenue Saved"   value="₹4.2L"  color="text-orange-400" />
       </div>
 
-      <div className="border border-white/10 rounded-xl bg-[#161b22] overflow-hidden">
+      <div className="border border-white/10 rounded-xl bg-night2 overflow-hidden">
         <div className="px-4 py-3 border-b border-white/10 text-xs text-white/50 font-medium">
           Abandoned Checkouts — E-commerce add to cart table
         </div>
@@ -586,7 +586,7 @@ function CartView() {
             </thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                <tr key={r.id} className="border-b border-white/5 hover:bg-card/3 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-[10px] text-blue-400">{r.token}</td>
                   <td className="py-2.5 px-3">{r.name}</td>
                   <td className="py-2.5 px-3 text-white/50">{r.phone}</td>
@@ -641,9 +641,9 @@ function WhatsAppTab() {
 
       <div className="grid grid-cols-3 gap-4" style={{ height: "calc(100vh - 230px)" }}>
         {/* Chat list */}
-        <div className="col-span-1 border border-white/10 rounded-xl bg-[#161b22] flex flex-col overflow-hidden">
+        <div className="col-span-1 border border-white/10 rounded-xl bg-night2 flex flex-col overflow-hidden">
           <div className="p-3 border-b border-white/10">
-            <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 bg-card/5 rounded-lg px-3 py-2">
               <svg className="w-3.5 h-3.5 text-white/30 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -658,7 +658,7 @@ function WhatsAppTab() {
               <button
                 key={c.id}
                 onClick={() => setSelectedChat(c.id)}
-                className={`w-full text-left px-3 py-3 border-b border-white/5 flex gap-3 items-start hover:bg-white/5 transition-all ${selectedChat === c.id ? "bg-white/8 border-l-2 border-l-[#25d366]" : ""}`}
+                className={`w-full text-left px-3 py-3 border-b border-white/5 flex gap-3 items-start hover:bg-card/5 transition-all ${selectedChat === c.id ? "bg-card/8 border-l-2 border-l-wa" : ""}`}
               >
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-xs font-bold shrink-0">
                   {c.name[0]}
@@ -670,9 +670,9 @@ function WhatsAppTab() {
                   </div>
                   <div className="text-[11px] text-white/40 truncate mt-0.5">{c.last}</div>
                   <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white/50">{c.tag}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-card/10 text-white/50">{c.tag}</span>
                     {c.unread > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-[#25d366] text-[9px] font-bold flex items-center justify-center text-black">
+                      <span className="w-4 h-4 rounded-full bg-wa text-[9px] font-bold flex items-center justify-center text-ink">
                         {c.unread}
                       </span>
                     )}
@@ -681,16 +681,16 @@ function WhatsAppTab() {
               </button>
             ))}
           </div>
-          <div className="p-3 border-t border-white/10 bg-[#25d366]/5">
+          <div className="p-3 border-t border-white/10 bg-wa/5">
             <div className="text-[10px] text-white/30 text-center font-mono">/api/v1/subscriber/list</div>
           </div>
         </div>
 
         {/* Conversation pane */}
-        <div className="col-span-2 border border-white/10 rounded-xl bg-[#161b22] flex flex-col overflow-hidden">
+        <div className="col-span-2 border border-white/10 rounded-xl bg-night2 flex flex-col overflow-hidden">
           {selectedChat ? (
             <>
-              <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-[#1c2128]">
+              <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-nightborder">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-sm font-bold">
                   {chats.find(c => c.id === selectedChat)?.name[0]}
                 </div>
@@ -710,11 +710,11 @@ function WhatsAppTab() {
                   <div key={m.id} className={`flex ${m.dir === "out" ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[70%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
                       m.dir === "out"
-                        ? "bg-[#25d366] text-black rounded-br-none"
-                        : "bg-white/10 text-white rounded-bl-none"
+                        ? "bg-wa text-ink rounded-br-none"
+                        : "bg-card/10 text-white rounded-bl-none"
                     }`}>
                       {m.text}
-                      <div className={`text-[10px] mt-1 ${m.dir === "out" ? "text-black/50 text-right" : "text-white/40"}`}>
+                      <div className={`text-[10px] mt-1 ${m.dir === "out" ? "text-ink/50 text-right" : "text-white/40"}`}>
                         {m.time}
                       </div>
                     </div>
@@ -723,7 +723,7 @@ function WhatsAppTab() {
               </div>
 
               <div className="p-3 border-t border-white/10">
-                <div className="flex gap-2 items-center bg-white/5 rounded-xl px-3 py-2.5">
+                <div className="flex gap-2 items-center bg-card/5 rounded-xl px-3 py-2.5">
                   <span className="text-xs text-white/30 flex-1">Type a message...</span>
                   <div className="flex gap-1.5">
                     <ActionBtn label="Attach" color="gray" />
@@ -770,7 +770,7 @@ function WalletTab() {
       {/* Balance + Recharge side by side */}
       <div className="grid grid-cols-3 gap-5">
         {/* Current balance */}
-        <div className="col-span-1 border border-yellow-500/25 rounded-xl bg-[#161b22] p-5 space-y-4">
+        <div className="col-span-1 border border-yellow-500/25 rounded-xl bg-night2 p-5 space-y-4">
           <div className="text-xs text-white/50 uppercase tracking-wider">Current Balance</div>
           <div className="space-y-1">
             <div className="text-4xl font-bold text-yellow-400">₹842.50</div>
@@ -781,8 +781,8 @@ function WalletTab() {
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16">
               <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1c2128" strokeWidth="3.5" />
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#eab308" strokeWidth="3.5" strokeDasharray="62 38" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--nightborder)" strokeWidth="3.5" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--warn)" strokeWidth="3.5" strokeDasharray="62 38" />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-yellow-400">62%</div>
             </div>
@@ -799,11 +799,11 @@ function WalletTab() {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-[#1c2128] rounded-lg p-2.5 text-center">
+            <div className="bg-nightborder rounded-lg p-2.5 text-center">
               <div className="text-[9px] text-white/30 mb-0.5">Total Calls</div>
               <div className="text-sm font-bold text-white">1,284</div>
             </div>
-            <div className="bg-[#1c2128] rounded-lg p-2.5 text-center">
+            <div className="bg-nightborder rounded-lg p-2.5 text-center">
               <div className="text-[9px] text-white/30 mb-0.5">Avg/Call</div>
               <div className="text-sm font-bold text-white">₹0.40</div>
             </div>
@@ -811,7 +811,7 @@ function WalletTab() {
         </div>
 
         {/* Recharge panel */}
-        <div className="col-span-2 border border-white/10 rounded-xl bg-[#161b22] p-5 space-y-4">
+        <div className="col-span-2 border border-white/10 rounded-xl bg-night2 p-5 space-y-4">
           <div className="text-xs font-semibold text-white/70">Add Money to Wallet</div>
 
           {/* Quick amounts */}
@@ -825,7 +825,7 @@ function WalletTab() {
                   className={`py-2.5 rounded-lg border text-sm font-semibold transition-all ${
                     selectedAmount === a
                       ? "border-yellow-500/50 bg-yellow-500/15 text-yellow-400"
-                      : "border-white/10 bg-white/3 text-white/60 hover:border-white/25 hover:text-white/90"
+                      : "border-white/10 bg-card/3 text-white/60 hover:border-white/25 hover:text-white/90"
                   }`}
                 >
                   ₹{a.toLocaleString()}
@@ -838,7 +838,7 @@ function WalletTab() {
           <div>
             <div className="text-[10px] text-white/40 mb-2">Or enter custom amount</div>
             <div className="flex gap-2">
-              <div className="flex items-center gap-2 bg-white/5 border border-white/15 rounded-lg px-3 py-2.5 flex-1">
+              <div className="flex items-center gap-2 bg-card/5 border border-white/15 rounded-lg px-3 py-2.5 flex-1">
                 <span className="text-white/50 text-sm">₹</span>
                 <span className="text-xs text-white/30">Enter amount (min ₹50)</span>
               </div>
@@ -854,7 +854,7 @@ function WalletTab() {
                 { label: "Credit Card", sub: "Visa, Mastercard" },
                 { label: "Net Banking", sub: "All major banks" },
               ].map((m, i) => (
-                <button key={m.label} className={`p-2.5 rounded-lg border text-left transition-all ${i === 0 ? "border-emerald-500/30 bg-emerald-500/8 text-white" : "border-white/10 bg-white/3 text-white/60 hover:border-white/20"}`}>
+                <button key={m.label} className={`p-2.5 rounded-lg border text-left transition-all ${i === 0 ? "border-emerald-500/30 bg-emerald-500/8 text-white" : "border-white/10 bg-card/3 text-white/60 hover:border-white/20"}`}>
                   <div className="text-[11px] font-medium">{m.label}</div>
                   <div className="text-[9px] text-white/30 mt-0.5">{m.sub}</div>
                 </button>
@@ -869,7 +869,7 @@ function WalletTab() {
               <div className="text-xl font-bold text-white">₹{(selectedAmount ?? 0).toLocaleString()}</div>
               <div className="text-[10px] text-white/30">+GST included · Instant credit</div>
             </div>
-            <button className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold rounded-lg transition-all">
+            <button className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-ink text-sm font-bold rounded-lg transition-all">
               Recharge Now
             </button>
           </div>
@@ -877,7 +877,7 @@ function WalletTab() {
       </div>
 
       {/* Transaction history */}
-      <div className="border border-white/10 rounded-xl bg-[#161b22] overflow-hidden">
+      <div className="border border-white/10 rounded-xl bg-night2 overflow-hidden">
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
           <span className="text-xs font-medium text-white/70">Transaction History</span>
           <button className="text-[10px] text-white/40 hover:text-white/70 transition-all flex items-center gap-1">
@@ -898,7 +898,7 @@ function WalletTab() {
             </thead>
             <tbody>
               {txns.map(t => (
-                <tr key={t.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                <tr key={t.id} className="border-b border-white/5 hover:bg-card/3 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-[10px] text-white/50">{t.id}</td>
                   <td className="py-2.5 px-3">
                     <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${t.type === "Recharge" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
@@ -944,7 +944,7 @@ function BillingTab() {
 
       {/* Current plan */}
       <div className="grid grid-cols-3 gap-5">
-        <div className="col-span-2 border border-emerald-500/25 rounded-xl bg-[#161b22] p-5">
+        <div className="col-span-2 border border-emerald-500/25 rounded-xl bg-night2 p-5">
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Current Plan</div>
@@ -963,12 +963,12 @@ function BillingTab() {
               { label: "WA Messages",      used: "2,104", total: "10,000", pct: 21 },
               { label: "Workflows",        used: "3",     total: "10",    pct: 30 },
             ].map(m => (
-              <div key={m.label} className="bg-[#1c2128] rounded-lg p-3">
+              <div key={m.label} className="bg-nightborder rounded-lg p-3">
                 <div className="flex justify-between text-[10px] mb-1.5">
                   <span className="text-white/50">{m.label}</span>
                   <span className="text-white/70">{m.used}/{m.total}</span>
                 </div>
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-card/10 rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${m.pct}%` }} />
                 </div>
                 <div className="text-[9px] text-white/30 mt-1">{m.pct}% used</div>
@@ -978,14 +978,14 @@ function BillingTab() {
         </div>
 
         {/* Plan comparison */}
-        <div className="border border-white/10 rounded-xl bg-[#161b22] p-5 space-y-3">
+        <div className="border border-white/10 rounded-xl bg-night2 p-5 space-y-3">
           <div className="text-xs font-semibold text-white/70">Available Plans</div>
           {[
             { name: "Starter", price: "₹999/mo",  calls: "1,000", active: false },
             { name: "Growth",  price: "₹2,999/mo", calls: "5,000", active: true  },
             { name: "Scale",   price: "₹7,999/mo", calls: "20,000",active: false },
           ].map(p => (
-            <div key={p.name} className={`p-3 rounded-lg border transition-all ${p.active ? "border-emerald-500/40 bg-emerald-500/8" : "border-white/8 bg-white/3"}`}>
+            <div key={p.name} className={`p-3 rounded-lg border transition-all ${p.active ? "border-emerald-500/40 bg-emerald-500/8" : "border-white/8 bg-card/3"}`}>
               <div className="flex items-center justify-between">
                 <div>
                   <div className={`text-xs font-semibold ${p.active ? "text-emerald-400" : "text-white/70"}`}>{p.name}</div>
@@ -1002,7 +1002,7 @@ function BillingTab() {
       </div>
 
       {/* Invoice table */}
-      <div className="border border-white/10 rounded-xl bg-[#161b22] overflow-hidden">
+      <div className="border border-white/10 rounded-xl bg-night2 overflow-hidden">
         <div className="px-4 py-3 border-b border-white/10 text-xs font-medium text-white/70">Invoice History</div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -1015,7 +1015,7 @@ function BillingTab() {
             </thead>
             <tbody>
               {invoices.map(inv => (
-                <tr key={inv.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                <tr key={inv.id} className="border-b border-white/5 hover:bg-card/3 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-[10px] text-blue-400">{inv.id}</td>
                   <td className="py-2.5 px-3">{inv.period}</td>
                   <td className="py-2.5 px-3 text-white/60">{inv.calls}</td>
@@ -1035,12 +1035,12 @@ function BillingTab() {
       </div>
 
       {/* Payment method on file */}
-      <div className="border border-white/10 rounded-xl bg-[#161b22] p-5">
+      <div className="border border-white/10 rounded-xl bg-night2 p-5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-white/70">Payment Method on File</span>
           <ActionBtn label="Update Card" color="blue" />
         </div>
-        <div className="flex items-center gap-3 p-3 bg-[#1c2128] rounded-lg border border-white/8">
+        <div className="flex items-center gap-3 p-3 bg-nightborder rounded-lg border border-white/8">
           <div className="w-10 h-7 rounded bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center text-[9px] font-bold text-white">VISA</div>
           <div>
             <div className="text-xs text-white/80">Visa ending in 4242</div>
@@ -1086,7 +1086,7 @@ function ProfileTab() {
                 className={`text-left px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                   activeSection === s.id
                     ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                    : "text-white/50 hover:text-white/80 hover:bg-white/5 border border-transparent"
+                    : "text-white/50 hover:text-white/80 hover:bg-card/5 border border-transparent"
                 }`}
               >
                 {s.label}
@@ -1100,7 +1100,7 @@ function ProfileTab() {
           {activeSection === "account" && (
             <div className="space-y-4">
               {/* Avatar + name */}
-              <div className="border border-white/10 rounded-xl bg-[#161b22] p-5">
+              <div className="border border-white/10 rounded-xl bg-night2 p-5">
                 <div className="text-xs font-semibold text-white/70 mb-4">Profile Information</div>
                 <div className="flex items-center gap-4 mb-5">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-2xl font-bold border-2 border-emerald-500/40">A</div>
@@ -1121,12 +1121,12 @@ function ProfileTab() {
                   ].map(f => (
                     <div key={f.label}>
                       <div className="text-[10px] text-white/40 mb-1">{f.label}</div>
-                      <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/70">{f.value}</div>
+                      <div className="bg-card/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/70">{f.value}</div>
                     </div>
                   ))}
                 </div>
                 <div className="mt-4 flex justify-end">
-                  <button className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-lg transition-all">
+                  <button className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-ink text-xs font-bold rounded-lg transition-all">
                     Save Changes
                   </button>
                 </div>
@@ -1135,7 +1135,7 @@ function ProfileTab() {
           )}
 
           {activeSection === "integrations" && (
-            <div className="border border-white/10 rounded-xl bg-[#161b22] p-5 space-y-4">
+            <div className="border border-white/10 rounded-xl bg-night2 p-5 space-y-4">
               <div className="text-xs font-semibold text-white/70">Connected Integrations</div>
               {[
                 { name: "Dograh AI",   desc: "AI voice call automation",   key: "dg_sk_••••••••••••ab12", status: "connected",    color: "emerald" },
@@ -1144,10 +1144,10 @@ function ProfileTab() {
                 { name: "Shopify",    desc: "E-commerce store",            key: "shpat_••••••••••••gh78", status: "connected",    color: "blue" },
                 { name: "Razorpay",   desc: "Payment gateway",             key: "Not connected",          status: "disconnected", color: "red" },
               ].map(int => (
-                <div key={int.name} className="flex items-center gap-4 p-3 bg-[#1c2128] rounded-lg border border-white/8">
+                <div key={int.name} className="flex items-center gap-4 p-3 bg-nightborder rounded-lg border border-white/8">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${
                     int.color === "emerald" ? "bg-emerald-500/20 text-emerald-400" :
-                    int.color === "green"   ? "bg-[#25d366]/20 text-[#25d366]" :
+                    int.color === "green"   ? "bg-wa/20 text-wa" :
                     int.color === "orange"  ? "bg-orange-500/20 text-orange-400" :
                     int.color === "blue"    ? "bg-blue-500/20 text-blue-400" :
                     "bg-red-500/20 text-red-400"
@@ -1171,32 +1171,32 @@ function ProfileTab() {
 
           {activeSection === "security" && (
             <div className="space-y-4">
-              <div className="border border-white/10 rounded-xl bg-[#161b22] p-5 space-y-4">
+              <div className="border border-white/10 rounded-xl bg-night2 p-5 space-y-4">
                 <div className="text-xs font-semibold text-white/70">Password & Security</div>
                 {["Current Password","New Password","Confirm New Password"].map(f => (
                   <div key={f}>
                     <div className="text-[10px] text-white/40 mb-1">{f}</div>
-                    <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/30">••••••••••</div>
+                    <div className="bg-card/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/30">••••••••••</div>
                   </div>
                 ))}
                 <div className="flex items-center justify-between pt-2">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-4 rounded-full bg-emerald-500 relative cursor-pointer">
-                      <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full" />
+                      <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-card rounded-full" />
                     </div>
                     <span className="text-xs text-white/60">Two-Factor Authentication (enabled)</span>
                   </div>
-                  <button className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-lg transition-all">Update Password</button>
+                  <button className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-ink text-xs font-bold rounded-lg transition-all">Update Password</button>
                 </div>
               </div>
 
-              <div className="border border-white/10 rounded-xl bg-[#161b22] p-5">
+              <div className="border border-white/10 rounded-xl bg-night2 p-5">
                 <div className="text-xs font-semibold text-white/70 mb-3">API Keys</div>
                 {[
                   { label: "Dograh API Key",   value: "dg_sk_••••••••••••ab12" },
                   { label: "BotSailor API Key", value: "bs_••••••••••••cd34"   },
                 ].map(k => (
-                  <div key={k.label} className="flex items-center gap-3 mb-2 p-2.5 bg-[#1c2128] rounded-lg border border-white/8">
+                  <div key={k.label} className="flex items-center gap-3 mb-2 p-2.5 bg-nightborder rounded-lg border border-white/8">
                     <div className="flex-1">
                       <div className="text-[10px] text-white/40">{k.label}</div>
                       <div className="font-mono text-xs text-white/60 mt-0.5">{k.value}</div>
@@ -1210,7 +1210,7 @@ function ProfileTab() {
           )}
 
           {activeSection === "notifications" && (
-            <div className="border border-white/10 rounded-xl bg-[#161b22] p-5 space-y-4">
+            <div className="border border-white/10 rounded-xl bg-night2 p-5 space-y-4">
               <div className="text-xs font-semibold text-white/70">Notification Preferences</div>
               {[
                 { label: "Low wallet balance alert",        sub: "Alert when balance drops below ₹100",   on: true },
@@ -1220,13 +1220,13 @@ function ProfileTab() {
                 { label: "WhatsApp incoming message",       sub: "Desktop notification for new WA messages",  on: true },
                 { label: "Weekly summary report",          sub: "Email every Monday with usage stats",        on: false },
               ].map(n => (
-                <div key={n.label} className="flex items-center gap-4 p-3 bg-[#1c2128] rounded-lg border border-white/8">
+                <div key={n.label} className="flex items-center gap-4 p-3 bg-nightborder rounded-lg border border-white/8">
                   <div className="flex-1">
                     <div className="text-xs font-medium text-white/80">{n.label}</div>
                     <div className="text-[10px] text-white/40">{n.sub}</div>
                   </div>
-                  <div className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${n.on ? "bg-emerald-500" : "bg-white/15"}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${n.on ? "right-0.5" : "left-0.5"}`} />
+                  <div className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${n.on ? "bg-emerald-500" : "bg-card/15"}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 bg-card rounded-full transition-all ${n.on ? "right-0.5" : "left-0.5"}`} />
                   </div>
                 </div>
               ))}
@@ -1234,17 +1234,17 @@ function ProfileTab() {
           )}
 
           {activeSection === "team" && (
-            <div className="border border-white/10 rounded-xl bg-[#161b22] p-5 space-y-4">
+            <div className="border border-white/10 rounded-xl bg-night2 p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold text-white/70">Team Members</div>
-                <button className="text-[10px] px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg transition-all">Invite Member</button>
+                <button className="text-[10px] px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-ink font-bold rounded-lg transition-all">Invite Member</button>
               </div>
               {[
                 { name: "Abhishek Kumar", email: "abhishek@example.com", role: "Owner",  status: "Active" },
                 { name: "Priya Sharma",  email: "priya@example.com",     role: "Admin",  status: "Active" },
                 { name: "Raj Patel",     email: "raj@example.com",       role: "Viewer", status: "Invited" },
               ].map(m => (
-                <div key={m.email} className="flex items-center gap-3 p-3 bg-[#1c2128] rounded-lg border border-white/8">
+                <div key={m.email} className="flex items-center gap-3 p-3 bg-nightborder rounded-lg border border-white/8">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-xs font-bold shrink-0">
                     {m.name[0]}
                   </div>
@@ -1277,7 +1277,7 @@ function SectionHeader({
   const colors: Record<string, string> = {
     emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     orange:  "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    green:   "bg-[#25d366]/10 text-[#25d366] border-[#25d366]/20",
+    green:   "bg-wa/10 text-wa border-wa/20",
     blue:    "bg-blue-500/10 text-blue-400 border-blue-500/20",
     yellow:  "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
   }
@@ -1305,17 +1305,17 @@ function KpiCard({ label, value, delta, colorKey, icon }: {
     emerald: "border-emerald-500/20 hover:border-emerald-500/40",
     orange:  "border-orange-500/20 hover:border-orange-500/40",
     blue:    "border-blue-500/20 hover:border-blue-500/40",
-    green:   "border-[#25d366]/20 hover:border-[#25d366]/40",
+    green:   "border-wa/20 hover:border-wa/40",
   }
   const texts: Record<string, string> = {
-    emerald: "text-emerald-400", orange: "text-orange-400", blue: "text-blue-400", green: "text-[#25d366]",
+    emerald: "text-emerald-400", orange: "text-orange-400", blue: "text-blue-400", green: "text-wa",
   }
   const iconBg: Record<string, string> = {
     emerald: "bg-emerald-500/10 text-emerald-400", orange: "bg-orange-500/10 text-orange-400",
-    blue: "bg-blue-500/10 text-blue-400", green: "bg-[#25d366]/10 text-[#25d366]",
+    blue: "bg-blue-500/10 text-blue-400", green: "bg-wa/10 text-wa",
   }
   return (
-    <div className={`border rounded-xl bg-[#161b22] p-4 transition-all ${borders[colorKey]}`}>
+    <div className={`border rounded-xl bg-night2 p-4 transition-all ${borders[colorKey]}`}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] text-white/40 uppercase tracking-wider leading-tight text-pretty">{label}</span>
         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${iconBg[colorKey]}`}>
@@ -1332,7 +1332,7 @@ function WireframeCard({ title, children, height = "h-40", span }: {
   title: string; children?: React.ReactNode; height?: string; span?: number
 }) {
   return (
-    <div className={`border border-white/10 rounded-xl bg-[#161b22] p-4 ${span ? `col-span-${span}` : ""}`}>
+    <div className={`border border-white/10 rounded-xl bg-night2 p-4 ${span ? `col-span-${span}` : ""}`}>
       <div className="text-xs font-medium text-white/60 mb-3">{title}</div>
       <div className={`${height} flex items-end justify-center`}>{children}</div>
     </div>
@@ -1377,10 +1377,10 @@ function DonutPlaceholder() {
     <div className="flex items-center justify-center gap-4 h-full w-full">
       <div className="relative w-20 h-20">
         <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1c2128" strokeWidth="3.8" />
-          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#10b981" strokeWidth="3.8" strokeDasharray="63 37" />
-          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f97316" strokeWidth="3.8" strokeDasharray="26 74" strokeDashoffset="-63" />
-          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#ef4444" strokeWidth="3.8" strokeDasharray="11 89" strokeDashoffset="-89" />
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--nightborder)" strokeWidth="3.8" />
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--success)" strokeWidth="3.8" strokeDasharray="63 37" />
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--warn)" strokeWidth="3.8" strokeDasharray="26 74" strokeDashoffset="-63" />
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--danger)" strokeWidth="3.8" strokeDasharray="11 89" strokeDashoffset="-89" />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">342</div>
       </div>
@@ -1405,7 +1405,7 @@ function HBarPlaceholder() {
       {agents.map(a => (
         <div key={a.name} className="flex items-center gap-3">
           <span className="text-[10px] text-white/50 w-24 text-right shrink-0">{a.name}</span>
-          <div className="flex-1 h-5 bg-white/5 rounded-full overflow-hidden">
+          <div className="flex-1 h-5 bg-card/5 rounded-full overflow-hidden">
             <div className="h-full bg-emerald-500/50 border-r-2 border-emerald-500 rounded-full" style={{ width: `${a.val}%` }} />
           </div>
           <span className="text-[10px] text-emerald-400 w-8 shrink-0">{a.val}%</span>
@@ -1424,7 +1424,7 @@ function SchemaCard({ title, color, source, fields }: {
   }
   const c = colors[color]
   return (
-    <div className={`border ${c.border} rounded-xl bg-[#161b22] p-4`}>
+    <div className={`border ${c.border} rounded-xl bg-night2 p-4`}>
       <div className={`text-xs font-semibold ${c.text} mb-0.5`}>{title}</div>
       <div className="text-[10px] text-white/30 mb-3 font-mono">{source}</div>
       <div className="space-y-1.5">
@@ -1442,7 +1442,7 @@ function SchemaCard({ title, color, source, fields }: {
 
 function MiniStat({ label, value, color = "text-white" }: { label: string; value: string; color?: string }) {
   return (
-    <div className="border border-white/10 rounded-lg bg-[#1c2128] px-3 py-2.5">
+    <div className="border border-white/10 rounded-lg bg-nightborder px-3 py-2.5">
       <div className="text-[10px] text-white/40">{label}</div>
       <div className={`text-lg font-bold mt-0.5 ${color}`}>{value}</div>
     </div>
@@ -1456,7 +1456,7 @@ function StatusBadge({ status }: { status: string }) {
     Cancelled: "bg-red-500/15 text-red-400 border-red-500/25",
   }
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${map[status] ?? "bg-white/10 text-white/50"}`}>
+    <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${map[status] ?? "bg-card/10 text-white/50"}`}>
       {status}
     </span>
   )
@@ -1469,7 +1469,7 @@ function RunStatusBadge({ status }: { status: string }) {
     "no-answer":"bg-yellow-500/15 text-yellow-400 border-yellow-500/25",
   }
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded border font-medium capitalize ${map[status] ?? "bg-white/10 text-white/50"}`}>
+    <span className={`text-[10px] px-2 py-0.5 rounded border font-medium capitalize ${map[status] ?? "bg-card/10 text-white/50"}`}>
       {status.replace("-", " ")}
     </span>
   )
@@ -1487,7 +1487,7 @@ function CallTypeBadge({ type }: { type: string }) {
 
 function WaBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    Sent:    "text-[#25d366]",
+    Sent:    "text-wa",
     Pending: "text-yellow-400",
     Failed:  "text-red-400",
   }
@@ -1499,8 +1499,8 @@ function ActionBtn({ label, color }: { label: string; color: string }) {
     emerald: "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20",
     blue:    "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/20",
     orange:  "bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border-orange-500/20",
-    green:   "bg-[#25d366]/10 text-[#25d366] hover:bg-[#25d366]/20 border-[#25d366]/20",
-    gray:    "bg-white/5 text-white/50 hover:bg-white/10 border-white/10",
+    green:   "bg-wa/10 text-wa hover:bg-wa/20 border-wa/20",
+    gray:    "bg-card/5 text-white/50 hover:bg-card/10 border-white/10",
     red:     "bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20",
   }
   return (

@@ -41,17 +41,17 @@ function WorkflowPicker({
   }
 
   return (
-    <div className="py-4 border-b border-black/[0.06]">
+    <div className="py-4 border-b border-ink/[0.06]">
       <div className="flex flex-col gap-3">
         <div>
-          <p className="text-[13px] font-medium text-[#1d1d1f]">Workflows</p>
-          <p className="text-[11px] text-[#6e6e73] mt-0.5">
+          <p className="text-[13px] font-medium text-ink">Workflows</p>
+          <p className="text-[11px] text-mute mt-0.5">
             Select one or more workflows — only runs from these will appear in the Calls tab.
           </p>
         </div>
         <div className="space-y-2">
           {isLoading && (
-            <div className="flex items-center gap-2 text-[13px] text-[#6e6e73]">
+            <div className="flex items-center gap-2 text-[13px] text-mute">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading workflows…
             </div>
           )}
@@ -60,19 +60,19 @@ function WorkflowPicker({
           {selectedIds.filter(Boolean).map((wfId, idx) => {
             const wf = available.find(w => String(w.id) === wfId)
             return (
-              <div key={wfId} className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+              <div key={wfId} className="flex items-center gap-2 bg-surface rounded-xl px-3.5 py-2.5">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-[#1d1d1f] truncate">
+                  <p className="text-[13px] font-medium text-ink truncate">
                     {wf ? wf.name : `Workflow ID: ${wfId}`}
                   </p>
-                  <p className="text-[11px] font-mono text-[#6e6e73]">
+                  <p className="text-[11px] font-mono text-mute">
                     ID: {wfId}{wf ? ` · ${wf.total_runs ?? 0} runs` : ""}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => removeAt(idx)}
-                  className="p-1.5 rounded-lg hover:bg-[#ff3b30]/10 text-[#6e6e73] hover:text-[#ff3b30] transition-colors shrink-0"
+                  className="p-1.5 rounded-lg hover:bg-danger/10 text-mute hover:text-danger transition-colors shrink-0"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -90,7 +90,7 @@ function WorkflowPicker({
                   if (val) addWorkflow(val)
                   e.target.value = ""
                 }}
-                className="w-full bg-[#f5f5f7] rounded-xl pl-3.5 pr-8 py-2.5 text-[13px] text-[#1d1d1f] outline-none border border-transparent focus:border-[#0066cc]/30 appearance-none cursor-pointer"
+                className="w-full bg-surface rounded-xl pl-3.5 pr-8 py-2.5 text-[13px] text-ink outline-none border border-transparent focus:border-info/30 appearance-none cursor-pointer"
               >
                 <option value="">+ Add a workflow…</option>
                 {addableWorkflows.map(w => (
@@ -99,12 +99,12 @@ function WorkflowPicker({
                   </option>
                 ))}
               </select>
-              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e6e73]" />
+              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mute" />
             </div>
           )}
 
           {!isLoading && available.length === 0 && (
-            <p className="text-[12px] text-[#6e6e73]">
+            <p className="text-[12px] text-mute">
               Save your Voice API key first to load available workflows.
             </p>
           )}
@@ -122,10 +122,10 @@ function SectionButton({ id, label, icon: Icon, active, onClick }: { id: Profile
       onClick={onClick}
       className={cn(
         "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[14px] font-medium transition-all text-left",
-        active ? "bg-[#0066cc]/10 text-[#0066cc]" : "text-[#6e6e73] hover:bg-[#f5f5f7]"
+        active ? "bg-info/10 text-info" : "text-mute hover:bg-surface"
       )}
     >
-      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-[#0066cc]" : "text-[#6e6e73]")} />
+      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-info" : "text-mute")} />
       {label}
     </button>
   )
@@ -135,32 +135,32 @@ function SecretField({ label, value, onChange, hint }: { label: string; value: s
   const [show, setShow] = useState(false)
   const [copied, setCopied] = useState(false)
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 py-4 border-b border-black/[0.06] last:border-0">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 py-4 border-b border-ink/[0.06] last:border-0">
       <div className="sm:col-span-1">
-        <p className="text-[13px] font-medium text-[#1d1d1f]">{label}</p>
-        {hint && <p className="text-[11px] text-[#6e6e73] mt-0.5">{hint}</p>}
+        <p className="text-[13px] font-medium text-ink">{label}</p>
+        {hint && <p className="text-[11px] text-mute mt-0.5">{hint}</p>}
       </div>
       <div className="sm:col-span-2 flex items-center gap-2">
-        <div className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 flex items-center gap-2">
+        <div className="flex-1 bg-surface rounded-xl px-3.5 py-2.5 flex items-center gap-2">
           {onChange ? (
             <input
               type={show ? "text" : "password"}
               value={value}
               onChange={e => onChange(e.target.value)}
               placeholder="••••••••••••"
-              className="bg-transparent text-[13px] text-[#1d1d1f] flex-1 font-mono outline-none"
+              className="bg-transparent text-[13px] text-ink flex-1 font-mono outline-none"
             />
           ) : (
-            <span className="text-[13px] text-[#1d1d1f] flex-1 font-mono truncate">
+            <span className="text-[13px] text-ink flex-1 font-mono truncate">
               {show ? value : "•".repeat(Math.min(value.length || 16, 24))}
             </span>
           )}
-          <button onClick={() => setShow(!show)} className="text-[#6e6e73] hover:text-[#1d1d1f]">
+          <button onClick={() => setShow(!show)} className="text-mute hover:text-ink">
             {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </button>
         </div>
-        <button onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000) }} className="p-2 rounded-lg hover:bg-[#f5f5f7]">
-          {copied ? <CheckCircle2 className="w-4 h-4 text-[#34c759]" /> : <Copy className="w-4 h-4 text-[#6e6e73]" />}
+        <button onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000) }} className="p-2 rounded-lg hover:bg-surface">
+          {copied ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-mute" />}
         </button>
       </div>
     </div>
@@ -169,10 +169,10 @@ function SecretField({ label, value, onChange, hint }: { label: string; value: s
 
 function TextField({ label, value, onChange, hint, type = "text" }: { label: string; value: string; onChange?: (v: string) => void; hint?: string; type?: string }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 py-4 border-b border-black/[0.06] last:border-0">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 py-4 border-b border-ink/[0.06] last:border-0">
       <div>
-        <p className="text-[13px] font-medium text-[#1d1d1f]">{label}</p>
-        {hint && <p className="text-[11px] text-[#6e6e73] mt-0.5">{hint}</p>}
+        <p className="text-[13px] font-medium text-ink">{label}</p>
+        {hint && <p className="text-[11px] text-mute mt-0.5">{hint}</p>}
       </div>
       <div className="sm:col-span-2">
         {onChange ? (
@@ -180,10 +180,10 @@ function TextField({ label, value, onChange, hint, type = "text" }: { label: str
             type={type}
             value={value}
             onChange={e => onChange(e.target.value)}
-            className="w-full bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none border border-transparent focus:border-[#0066cc]/30"
+            className="w-full bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-ink outline-none border border-transparent focus:border-info/30"
           />
         ) : (
-          <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f]">{value || "—"}</div>
+          <div className="bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-ink">{value || "—"}</div>
         )}
       </div>
     </div>
@@ -192,17 +192,17 @@ function TextField({ label, value, onChange, hint, type = "text" }: { label: str
 
 function ToggleRow({ label, sub, enabled, onChange }: { label: string; sub: string; enabled: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="flex items-start gap-3 py-4 border-b border-black/[0.06] last:border-0">
+    <div className="flex items-start gap-3 py-4 border-b border-ink/[0.06] last:border-0">
       <div className="flex-1">
-        <p className="text-[13px] font-medium text-[#1d1d1f]">{label}</p>
-        <p className="text-[12px] text-[#6e6e73] mt-0.5">{sub}</p>
+        <p className="text-[13px] font-medium text-ink">{label}</p>
+        <p className="text-[12px] text-mute mt-0.5">{sub}</p>
       </div>
       <button
         onClick={() => onChange(!enabled)}
-        className={cn("relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5", enabled ? "bg-[#34c759]" : "bg-[#c7c7cc]")}
+        className={cn("relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5", enabled ? "bg-success" : "bg-faint")}
         role="switch" aria-checked={enabled}
       >
-        <span className={cn("absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform", enabled ? "translate-x-5" : "translate-x-0")} />
+        <span className={cn("absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-card shadow transition-transform", enabled ? "translate-x-5" : "translate-x-0")} />
       </button>
     </div>
   )
@@ -260,11 +260,13 @@ export function ProfileTab() {
   // Integration fields
   const [voiceApiKey, setVoiceApiKey] = useState("")
   const [voiceBaseUrl, setVoiceBaseUrl] = useState("")
+  const [callCostPerMinute, setCallCostPerMinute] = useState("5")
   // Multi-workflow: stored as newline-separated string in tenant, array in UI
   const [workflowIds, setWorkflowIds] = useState<string[]>([])
   const [botsailorKey, setBotsailorKey] = useState("")
   const [botsailorPhoneId, setBotsailorPhoneId] = useState("")
   const [shopifyDomain, setShopifyDomain] = useState("")
+  const [shopifyAdminToken, setShopifyAdminToken] = useState("")
   const [clientSupabaseUrl, setClientSupabaseUrl] = useState("")
   const [clientSupabaseKey, setClientSupabaseKey] = useState("")
   const [codTableName, setCodTableName] = useState("")
@@ -293,12 +295,14 @@ export function ProfileTab() {
     setPhone(tenant.phone ?? "")
     setVoiceApiKey(tenant.voice_api_key ?? "")
     setVoiceBaseUrl(tenant.voice_base_url ?? "")
+    setCallCostPerMinute(String(tenant.notification_prefs?.call_cost_per_minute ?? "5"))
     // voice_workflow_id stores newline-separated workflow IDs (reusing existing column)
     const raw: string = tenant.voice_workflow_id ?? ""
     setWorkflowIds(raw ? raw.split("\n").filter(Boolean) : [])
     setBotsailorKey(tenant.botsailor_api_key ?? "")
     setBotsailorPhoneId(tenant.botsailor_phone_id ?? "")
     setShopifyDomain(tenant.shopify_store_domain ?? "")
+    setShopifyAdminToken(tenant.shopify_admin_token ?? "")
     setClientSupabaseUrl(tenant.client_supabase_url ?? "")
     setClientSupabaseKey(tenant.client_supabase_anon_key ?? "")
     setCodTableName(tenant.cod_table_name ?? "")
@@ -345,8 +349,8 @@ export function ProfileTab() {
           onClick={() => handleSave(payload)}
           disabled={saving}
           className={cn(
-            "bg-[#0066cc] text-white text-[13px] font-semibold rounded-full px-5 py-2.5 active:scale-95 transition-all disabled:opacity-60 w-fit",
-            saved && "bg-[#34c759]"
+            "bg-info text-white text-[13px] font-semibold rounded-full px-5 py-2.5 active:scale-95 transition-all disabled:opacity-60 w-fit",
+            saved && "bg-success"
           )}
         >
           {saved ? "Saved!" : saving ? "Saving…" : "Save Changes"}
@@ -359,7 +363,7 @@ export function ProfileTab() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
       {/* Nav sidebar */}
-      <div className="bg-white rounded-2xl hairline p-3 space-y-1 lg:col-span-1 h-fit">
+      <div className="bg-card rounded-2xl hairline p-3 space-y-1 lg:col-span-1 h-fit">
         <SectionButton id="account" label="Account" icon={User} active={section === "account"} onClick={() => setSection("account")} />
         <SectionButton id="integrations" label="Integrations" icon={Building2} active={section === "integrations"} onClick={() => setSection("integrations")} />
         <SectionButton id="security" label="Security" icon={Shield} active={section === "security"} onClick={() => setSection("security")} />
@@ -367,20 +371,20 @@ export function ProfileTab() {
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-2xl hairline p-5 lg:col-span-3">
+      <div className="bg-card rounded-2xl hairline p-5 lg:col-span-3">
 
         {/* Account */}
         {section === "account" && (
           <div>
-            <p className="text-[17px] font-semibold text-[#1d1d1f] mb-1">Account</p>
-            <p className="text-[13px] text-[#6e6e73] mb-6">Your personal and organization info</p>
-            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-black/[0.06]">
-              <div className="w-16 h-16 rounded-full bg-[#0066cc] flex items-center justify-center text-white text-[22px] font-semibold">
+            <p className="text-[17px] font-semibold text-ink mb-1">Account</p>
+            <p className="text-[13px] text-mute mb-6">Your personal and organization info</p>
+            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-ink/[0.06]">
+              <div className="w-16 h-16 rounded-full bg-info flex items-center justify-center text-white text-[22px] font-semibold">
                 {(name[0] ?? "A").toUpperCase()}
               </div>
               <div>
-                <p className="text-[15px] font-semibold text-[#1d1d1f]">{name || "User"}</p>
-                <p className="text-[13px] text-[#6e6e73]">{email}</p>
+                <p className="text-[15px] font-semibold text-ink">{name || "User"}</p>
+                <p className="text-[13px] text-mute">{email}</p>
               </div>
             </div>
             <TextField label="Full Name" value={name} onChange={setName} />
@@ -396,25 +400,37 @@ export function ProfileTab() {
         {/* Integrations */}
         {section === "integrations" && (
           <div>
-            <p className="text-[17px] font-semibold text-[#1d1d1f] mb-1">Integrations</p>
-            <p className="text-[13px] text-[#6e6e73] mb-6">API keys and service connections</p>
+            <p className="text-[17px] font-semibold text-ink mb-1">Integrations</p>
+            <p className="text-[13px] text-mute mb-6">API keys and service connections</p>
 
             <div className="space-y-6">
               {/* Voice */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-md bg-[#0066cc]/10 flex items-center justify-center">
-                    <Key className="w-3.5 h-3.5 text-[#0066cc]" />
+                  <div className="w-6 h-6 rounded-md bg-info/10 flex items-center justify-center">
+                    <Key className="w-3.5 h-3.5 text-info" />
                   </div>
-                  <p className="text-[14px] font-semibold text-[#1d1d1f]">Dograh / LarynxAI Voice</p>
+                  <p className="text-[14px] font-semibold text-ink">Dograh / LarynxAI Voice</p>
                   <span className={cn("ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full",
-                    voiceApiKey ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
+                    voiceApiKey ? "bg-success/10 text-successtext" : "bg-warn/10 text-warntext"
                   )}>
                     {voiceApiKey ? "Connected" : "Not set"}
                   </span>
                 </div>
                 <SecretField label="API Key" value={voiceApiKey} onChange={setVoiceApiKey} hint="Used for all call triggers and run retrieval" />
                 <TextField label="Base URL" value={voiceBaseUrl} onChange={setVoiceBaseUrl} hint="e.g. https://voice.larynxai.in" />
+                <div className="py-1">
+                  <p className="text-[12px] font-medium text-mute mb-1">Call Cost per Minute (₹)</p>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={callCostPerMinute}
+                    onChange={e => setCallCostPerMinute(e.target.value)}
+                    className="bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-ink outline-none w-32"
+                  />
+                  <p className="text-[11px] text-faint mt-1">Used to calculate call cost savings vs. manual agent. Default: ₹5/min</p>
+                </div>
                 <WorkflowPicker
                   apiKey={voiceApiKey}
                   selectedIds={workflowIds}
@@ -425,12 +441,12 @@ export function ProfileTab() {
               {/* BotSailor */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-md bg-[#34c759]/10 flex items-center justify-center">
-                    <Key className="w-3.5 h-3.5 text-[#34c759]" />
+                  <div className="w-6 h-6 rounded-md bg-success/10 flex items-center justify-center">
+                    <Key className="w-3.5 h-3.5 text-success" />
                   </div>
-                  <p className="text-[14px] font-semibold text-[#1d1d1f]">BotSailor WhatsApp</p>
+                  <p className="text-[14px] font-semibold text-ink">BotSailor WhatsApp</p>
                   <span className={cn("ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full",
-                    botsailorKey ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
+                    botsailorKey ? "bg-success/10 text-successtext" : "bg-warn/10 text-warntext"
                   )}>
                     {botsailorKey ? "Connected" : "Not set"}
                   </span>
@@ -442,7 +458,7 @@ export function ProfileTab() {
                   <button
                     onClick={autoDetectPhoneId}
                     disabled={!botsailorKey || detectingPhone}
-                    className="flex items-center gap-2 text-[12px] font-medium text-[#0066cc] hover:text-[#0055b3] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-2 text-[12px] font-medium text-info hover:text-infostrong disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {detectingPhone
                       ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -452,7 +468,7 @@ export function ProfileTab() {
                   {detectError && <p className="text-[12px] text-red-600 mt-1.5">{detectError}</p>}
                   {detectedAccounts.length > 1 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-[12px] text-[#6e6e73]">Multiple accounts found — click one to select and save:</p>
+                      <p className="text-[12px] text-mute">Multiple accounts found — click one to select and save:</p>
                       {detectedAccounts.map(a => (
                         <button
                           key={a.phone_number_id}
@@ -463,86 +479,123 @@ export function ProfileTab() {
                           className={cn(
                             "w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-[12px] border transition-colors",
                             botsailorPhoneId === a.phone_number_id
-                              ? "border-[#0066cc] bg-[#0066cc]/5 text-[#0066cc]"
-                              : "border-[rgba(0,0,0,0.08)] hover:bg-[#f5f5f7] text-[#1d1d1f]"
+                              ? "border-info bg-info/5 text-info"
+                              : "border-[rgba(0,0,0,0.08)] hover:bg-surface text-ink"
                           )}
                         >
                           <span className="font-medium">{a.display_phone_number}</span>
-                          <span className="font-mono text-[#6e6e73]">{a.phone_number_id}</span>
+                          <span className="font-mono text-mute">{a.phone_number_id}</span>
                         </button>
                       ))}
                     </div>
                   )}
                   {detectedAccounts.length === 1 && botsailorPhoneId === detectedAccounts[0].phone_number_id && (
-                    <p className="text-[12px] text-[#34c759] mt-1.5 flex items-center gap-1">
+                    <p className="text-[12px] text-success mt-1.5 flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Auto-filled: {detectedAccounts[0].display_phone_number}
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Shopify / Order Tables */}
+              {/* Shopify */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-md bg-[#95bf47]/20 flex items-center justify-center">
-                    <Building2 className="w-3.5 h-3.5 text-[#5a8a00]" />
+                  <div className="w-6 h-6 rounded-md bg-shopify/20 flex items-center justify-center">
+                    <Building2 className="w-3.5 h-3.5 text-shopifytext" />
                   </div>
-                  <p className="text-[14px] font-semibold text-[#1d1d1f]">Order Tables</p>
+                  <p className="text-[14px] font-semibold text-ink">Shopify</p>
                   <span className={cn("ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full",
-                    (codTableName || cartTableName) ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
+                    (shopifyDomain && shopifyAdminToken) ? "bg-success/10 text-successtext" : "bg-warn/10 text-warntext"
+                  )}>
+                    {(shopifyDomain && shopifyAdminToken) ? "Connected" : "Not set"}
+                  </span>
+                </div>
+                <p className="text-[12px] text-mute mb-3">
+                  Connect your Shopify store to track WhatsApp-attributed revenue (orders with <code className="font-mono bg-surface px-1 rounded">WA-</code> discount codes) directly on the dashboard.
+                </p>
+                <TextField
+                  label="Store Domain"
+                  value={shopifyDomain}
+                  onChange={setShopifyDomain}
+                  hint="e.g. your-store.myshopify.com"
+                />
+                <SecretField
+                  label="Admin API Token"
+                  value={shopifyAdminToken}
+                  onChange={setShopifyAdminToken}
+                  hint="shpat_xxxxxxxxxxxxxxxxxxxxxxxx — Settings › Apps › Private apps"
+                />
+                <p className="text-[11px] text-mute mt-1.5">
+                  Webhook URL for real-time order attribution:{" "}
+                  <code className="font-mono bg-surface px-1 rounded break-all">
+                    {typeof window !== "undefined" ? `${window.location.origin}/api/shopify/webhook` : "/api/shopify/webhook"}
+                  </code>
+                  {" "}— register this in Shopify under <strong>Settings › Notifications › Webhooks</strong> for the <em>Order payment</em> event.
+                </p>
+              </div>
+
+              {/* Order Tables */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-md bg-shopify/20 flex items-center justify-center">
+                    <Building2 className="w-3.5 h-3.5 text-shopifytext" />
+                  </div>
+                  <p className="text-[14px] font-semibold text-ink">Order Tables</p>
+                  <span className={cn("ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full",
+                    (codTableName || cartTableName) ? "bg-success/10 text-successtext" : "bg-warn/10 text-warntext"
                   )}>
                     {(codTableName || cartTableName) ? "Configured" : "Not set"}
                   </span>
                 </div>
-                <p className="text-[12px] text-[#6e6e73] mb-3">These tables are read directly from your connected Supabase project. Click Detect to auto-fill from your actual table list.</p>
+                <p className="text-[12px] text-mute mb-3">These tables are read directly from your connected Supabase project. Click Detect to auto-fill from your actual table list.</p>
                 {/* COD Table */}
                 <div className="py-1">
-                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">COD Table Name</p>
+                  <p className="text-[12px] font-medium text-mute mb-1">COD Table Name</p>
                   <div className="flex gap-2 items-center">
                     <input
                       value={codTableName}
                       onChange={e => setCodTableName(e.target.value)}
                       placeholder="e.g. cod_confirmation"
-                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                      className="flex-1 bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-ink outline-none placeholder:text-faint"
                     />
                     <DetectTablesButton onSelect={setCodTableName} label="COD" />
                   </div>
                 </div>
                 {/* Cart Table */}
                 <div className="py-1">
-                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Cart Table Name</p>
+                  <p className="text-[12px] font-medium text-mute mb-1">Cart Table Name</p>
                   <div className="flex gap-2 items-center">
                     <input
                       value={cartTableName}
                       onChange={e => setCartTableName(e.target.value)}
                       placeholder="e.g. E-commerce add to cart"
-                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                      className="flex-1 bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-ink outline-none placeholder:text-faint"
                     />
                     <DetectTablesButton onSelect={setCartTableName} label="Cart" />
                   </div>
                 </div>
                 {/* Support Table */}
                 <div className="py-1">
-                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Customer Support Table Name</p>
+                  <p className="text-[12px] font-medium text-mute mb-1">Customer Support Table Name</p>
                   <div className="flex gap-2 items-center">
                     <input
                       value={supportTableName}
                       onChange={e => setSupportTableName(e.target.value)}
                       placeholder="e.g. customer_support"
-                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                      className="flex-1 bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-ink outline-none placeholder:text-faint"
                     />
                     <DetectTablesButton onSelect={setSupportTableName} label="Support" />
                   </div>
                 </div>
                 {/* Review Table */}
                 <div className="py-1">
-                  <p className="text-[12px] font-medium text-[#6e6e73] mb-1">Customer Review Table Name</p>
+                  <p className="text-[12px] font-medium text-mute mb-1">Customer Review Table Name</p>
                   <div className="flex gap-2 items-center">
                     <input
                       value={reviewTableName}
                       onChange={e => setReviewTableName(e.target.value)}
                       placeholder="e.g. customer_review"
-                      className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#c7c7cc]"
+                      className="flex-1 bg-surface rounded-xl px-3.5 py-2.5 text-[13px] text-ink outline-none placeholder:text-faint"
                     />
                     <DetectTablesButton onSelect={setReviewTableName} label="Review" />
                   </div>
@@ -552,12 +605,12 @@ export function ProfileTab() {
               {/* Razorpay */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-md bg-[#0066cc]/10 flex items-center justify-center">
-                    <Building2 className="w-3.5 h-3.5 text-[#0066cc]" />
+                  <div className="w-6 h-6 rounded-md bg-info/10 flex items-center justify-center">
+                    <Building2 className="w-3.5 h-3.5 text-info" />
                   </div>
-                  <p className="text-[14px] font-semibold text-[#1d1d1f]">Razorpay</p>
+                  <p className="text-[14px] font-semibold text-ink">Razorpay</p>
                   <span className={cn("ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full",
-                    razorpayKeyId ? "bg-[#34c759]/10 text-[#1a7a32]" : "bg-[#ff9500]/10 text-[#8a5900]"
+                    razorpayKeyId ? "bg-success/10 text-successtext" : "bg-warn/10 text-warntext"
                   )}>
                     {razorpayKeyId ? "Connected" : "Not set"}
                   </span>
@@ -575,12 +628,17 @@ export function ProfileTab() {
                 botsailor_api_key: botsailorKey,
                 botsailor_phone_id: botsailorPhoneId,
                 shopify_store_domain: shopifyDomain,
+                shopify_admin_token: shopifyAdminToken,
                 cod_table_name: codTableName,
                 cart_table_name: cartTableName,
                 support_table_name: supportTableName,
                 review_table_name: reviewTableName,
                 razorpay_key_id: razorpayKeyId,
                 razorpay_key_secret: razorpayKeySecret,
+                notification_prefs: {
+                  ...notifs,
+                  call_cost_per_minute: parseFloat(callCostPerMinute) || 5,
+                },
               }} />
             </div>
           </div>
@@ -589,8 +647,8 @@ export function ProfileTab() {
         {/* Security */}
         {section === "security" && (
           <div>
-            <p className="text-[17px] font-semibold text-[#1d1d1f] mb-1">Security</p>
-            <p className="text-[13px] text-[#6e6e73] mb-6">Password and 2FA management</p>
+            <p className="text-[17px] font-semibold text-ink mb-1">Security</p>
+            <p className="text-[13px] text-mute mb-6">Password and 2FA management</p>
             <PasswordSection />
           </div>
         )}
@@ -598,8 +656,8 @@ export function ProfileTab() {
         {/* Notifications */}
         {section === "notifications" && (
           <div>
-            <p className="text-[17px] font-semibold text-[#1d1d1f] mb-1">Notifications</p>
-            <p className="text-[13px] text-[#6e6e73] mb-6">Control what alerts you receive</p>
+            <p className="text-[17px] font-semibold text-ink mb-1">Notifications</p>
+            <p className="text-[13px] text-mute mb-6">Control what alerts you receive</p>
             <ToggleRow label="Call Completed" sub="Notify when a call run finishes successfully" enabled={notifs.call_complete} onChange={v => setNotifs(n => ({ ...n, call_complete: v }))} />
             <ToggleRow label="Call Failed" sub="Notify when a call run fails or gets no answer" enabled={notifs.call_failed} onChange={v => setNotifs(n => ({ ...n, call_failed: v }))} />
             <ToggleRow label="COD Confirmed" sub="Notify when a COD order is confirmed by customer" enabled={notifs.cod_confirmed} onChange={v => setNotifs(n => ({ ...n, cod_confirmed: v }))} />
@@ -641,25 +699,25 @@ function DetectTablesButton({
       <button
         onClick={detect}
         disabled={loading}
-        className="flex items-center gap-1.5 text-[12px] font-medium text-[#0066cc] hover:text-[#0055b3] disabled:opacity-50 whitespace-nowrap px-3 py-2.5 bg-[#f5f5f7] rounded-xl transition-colors"
+        className="flex items-center gap-1.5 text-[12px] font-medium text-info hover:text-infostrong disabled:opacity-50 whitespace-nowrap px-3 py-2.5 bg-surface rounded-xl transition-colors"
       >
         {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
         Detect
       </button>
       {err && <p className="absolute left-0 top-full mt-1 text-[11px] text-red-600 whitespace-nowrap z-10">{err}</p>}
       {open && tables.length > 0 && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-[rgba(0,0,0,0.1)] rounded-xl shadow-lg z-20 min-w-[220px] max-h-60 overflow-y-auto py-1">
-          <p className="px-3 py-1.5 text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider">Select {label} table</p>
+        <div className="absolute right-0 top-full mt-1 bg-card border border-[rgba(0,0,0,0.1)] rounded-xl shadow-lg z-20 min-w-[220px] max-h-60 overflow-y-auto py-1">
+          <p className="px-3 py-1.5 text-[11px] font-semibold text-mute uppercase tracking-wider">Select {label} table</p>
           {tables.map(t => (
             <button
               key={t}
               onClick={() => { onSelect(t); setOpen(false) }}
-              className="w-full text-left px-3 py-2 text-[13px] text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors font-mono"
+              className="w-full text-left px-3 py-2 text-[13px] text-ink hover:bg-surface transition-colors font-mono"
             >
               {t}
             </button>
           ))}
-          <button onClick={() => setOpen(false)} className="w-full text-left px-3 py-2 text-[12px] text-[#6e6e73] hover:bg-[#f5f5f7] border-t border-[rgba(0,0,0,0.06)]">
+          <button onClick={() => setOpen(false)} className="w-full text-left px-3 py-2 text-[12px] text-mute hover:bg-surface border-t border-[rgba(0,0,0,0.06)]">
             Cancel
           </button>
         </div>
@@ -672,15 +730,15 @@ function PasswordInput({ label, value, onChange }: { label: string; value: strin
   const [show, setShow] = useState(false)
   return (
     <div>
-      <label className="block text-[13px] font-medium text-[#1d1d1f] mb-1.5">{label}</label>
-      <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+      <label className="block text-[13px] font-medium text-ink mb-1.5">{label}</label>
+      <div className="flex items-center gap-2 bg-surface rounded-xl px-3.5 py-2.5">
         <input
           type={show ? "text" : "password"}
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="flex-1 bg-transparent text-[13px] text-[#1d1d1f] outline-none"
+          className="flex-1 bg-transparent text-[13px] text-ink outline-none"
         />
-        <button onClick={() => setShow(s => !s)} className="text-[#6e6e73]">
+        <button onClick={() => setShow(s => !s)} className="text-mute">
           {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
       </div>
@@ -722,11 +780,11 @@ function PasswordSection() {
       <PasswordInput label="New Password" value={next} onChange={setNext} />
       <PasswordInput label="Confirm New Password" value={confirm} onChange={setConfirm} />
       {error && <p className="text-[13px] text-red-600">{error}</p>}
-      {done && <p className="text-[13px] text-[#34c759]">Password updated successfully!</p>}
+      {done && <p className="text-[13px] text-success">Password updated successfully!</p>}
       <button
         onClick={handleSubmit}
         disabled={loading || !current || !next || !confirm}
-        className="bg-[#0066cc] text-white text-[13px] font-semibold rounded-full px-5 py-2.5 active:scale-95 transition-all disabled:opacity-60"
+        className="bg-info text-white text-[13px] font-semibold rounded-full px-5 py-2.5 active:scale-95 transition-all disabled:opacity-60"
       >
         {loading ? "Updating…" : "Update Password"}
       </button>

@@ -17,10 +17,11 @@ export async function GET(req: Request) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '20')
   const search = searchParams.get('search') ?? ''
+  // call_status filter: 'confirmed' = match both 'COMPLETED' and 'completed', 'pending' = null
+  const callStatusFilter = searchParams.get('call_status') ?? ''
 
   const cartTable = tenant?.cart_table_name || 'E-commerce add to cart'
 
-  // Use admin client to bypass RLS on cart table (no user-scoped RLS on this table)
   const admin = createAdminClient()
 
   let query = admin
@@ -30,6 +31,13 @@ export async function GET(req: Request) {
     .range((page - 1) * limit, page * limit - 1)
 
   if (search) query = query.ilike('customer_name', `%${search}%`)
+
+  // Match both COMPLETED and completed in one filter
+  if (callStatusFilter === 'confirmed') {
+    query = query.in('call status', ['COMPLETED', 'completed'])
+  } else if (callStatusFilter === 'pending') {
+    query = query.is('call status', null)
+  }
 
   const { data, error, count } = await query
   if (error) return NextResponse.json({

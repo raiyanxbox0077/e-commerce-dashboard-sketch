@@ -36,10 +36,10 @@ interface Run {
 
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; icon: React.ElementType }> = {
-  completed:   { label: "Completed",   color: "text-[#1a7a32]",  bg: "bg-[#34c759]/10", dot: "bg-[#34c759]",  icon: CheckCircle2 },
-  failed:      { label: "Failed",      color: "text-[#cc0000]",  bg: "bg-[#ff3b30]/10", dot: "bg-[#ff3b30]",  icon: XCircle },
-  no_answer:   { label: "No Answer",   color: "text-[#8a5900]",  bg: "bg-[#ff9500]/10", dot: "bg-[#ff9500]",  icon: AlertCircle },
-  in_progress: { label: "In Progress", color: "text-[#0066cc]",  bg: "bg-[#0066cc]/10", dot: "bg-[#0066cc]",  icon: Loader2 },
+  completed:   { label: "Completed",   color: "text-successtext",  bg: "bg-success/10", dot: "bg-success",  icon: CheckCircle2 },
+  failed:      { label: "Failed",      color: "text-dangertext",  bg: "bg-danger/10", dot: "bg-danger",  icon: XCircle },
+  no_answer:   { label: "No Answer",   color: "text-warntext",  bg: "bg-warn/10", dot: "bg-warn",  icon: AlertCircle },
+  in_progress: { label: "In Progress", color: "text-info",  bg: "bg-info/10", dot: "bg-info",  icon: Loader2 },
 }
 
 function formatDuration(sec?: number) {
@@ -79,25 +79,25 @@ function AudioPlayer({ src, label }: { src: string; label: string }) {
   }
 
   return (
-    <div className="bg-[#f5f5f7] rounded-xl p-3 flex flex-col gap-2">
+    <div className="bg-surface rounded-xl p-3 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <div className="w-5 h-5 rounded-md bg-[#0066cc]/10 flex items-center justify-center shrink-0">
-          <Mic className="w-3 h-3 text-[#0066cc]" />
+        <div className="w-5 h-5 rounded-md bg-info/10 flex items-center justify-center shrink-0">
+          <Mic className="w-3 h-3 text-info" />
         </div>
-        <span className="text-[12px] font-medium text-[#1d1d1f] flex-1">{label}</span>
+        <span className="text-[12px] font-medium text-ink flex-1">{label}</span>
         <a
           href={src}
           download
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-[11px] text-[#0066cc] hover:underline font-medium"
+          className="flex items-center gap-1 text-[11px] text-info hover:underline font-medium"
           onClick={e => e.stopPropagation()}
         >
           <Download className="w-3 h-3" /> Download
         </a>
       </div>
       {error ? (
-        <p className="text-[12px] text-[#6e6e73]">Unable to play — use the download link above.</p>
+        <p className="text-[12px] text-mute">Unable to play — use the download link above.</p>
       ) : (
         <>
           {/* Only set src when we have a valid URL — prevents NotSupportedError */}
@@ -119,7 +119,7 @@ function AudioPlayer({ src, label }: { src: string; label: string }) {
           <div className="flex items-center gap-2">
             <button
               onClick={toggle}
-              className="w-8 h-8 rounded-full bg-[#0066cc] flex items-center justify-center shrink-0 hover:bg-[#0055b3] transition-colors"
+              className="w-8 h-8 rounded-full bg-info flex items-center justify-center shrink-0 hover:bg-infostrong transition-colors"
             >
               {playing
                 ? <Pause className="w-3.5 h-3.5 text-white fill-white" />
@@ -129,9 +129,9 @@ function AudioPlayer({ src, label }: { src: string; label: string }) {
               type="range" min={0} max={duration || 1} step={0.1}
               value={currentTime}
               onChange={seek}
-              className="flex-1 h-1.5 accent-[#0066cc] cursor-pointer"
+              className="flex-1 h-1.5 accent-info cursor-pointer"
             />
-            <span className="text-[11px] text-[#6e6e73] font-mono shrink-0 w-16 text-right">
+            <span className="text-[11px] text-mute font-mono shrink-0 w-16 text-right">
               {fmt(currentTime)} / {fmt(duration)}
             </span>
           </div>
@@ -183,12 +183,12 @@ function TranscriptViewer({ url, loadingDetail }: { url: string | null; loadingD
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[12px] font-semibold text-[#6e6e73] uppercase tracking-wider">Transcript</p>
+        <p className="text-[12px] font-semibold text-mute uppercase tracking-wider">Transcript</p>
         {url && !expanded && (
           <button
             onClick={load}
             disabled={loadingDetail}
-            className="flex items-center gap-1.5 text-[12px] font-medium text-[#0066cc] hover:underline"
+            className="flex items-center gap-1.5 text-[12px] font-medium text-info hover:underline"
           >
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
             {loading ? "Loading…" : "Show transcript"}
@@ -198,14 +198,14 @@ function TranscriptViewer({ url, loadingDetail }: { url: string | null; loadingD
           <div className="flex items-center gap-2">
             <button
               onClick={() => setExpanded(false)}
-              className="text-[12px] font-medium text-[#6e6e73] hover:underline"
+              className="text-[12px] font-medium text-mute hover:underline"
             >
               Collapse
             </button>
             <a
               href={url}
               download
-              className="flex items-center gap-1 text-[12px] font-medium text-[#6e6e73] hover:text-[#1d1d1f]"
+              className="flex items-center gap-1 text-[12px] font-medium text-mute hover:text-ink"
             >
               <Download className="w-3 h-3" /> Download
             </a>
@@ -214,7 +214,7 @@ function TranscriptViewer({ url, loadingDetail }: { url: string | null; loadingD
       </div>
 
       {!url && (
-        <div className="bg-[#f5f5f7] rounded-xl px-4 py-3 text-[13px] text-[#6e6e73]">
+        <div className="bg-surface rounded-xl px-4 py-3 text-[13px] text-mute">
           {loadingDetail ? "Loading…" : "No transcript available"}
         </div>
       )}
@@ -222,25 +222,25 @@ function TranscriptViewer({ url, loadingDetail }: { url: string | null; loadingD
       {url && !expanded && (
         <button
           onClick={load}
-          className="w-full flex items-center gap-2.5 bg-[#f5f5f7] hover:bg-[#ebebf0] rounded-xl px-4 py-3 transition-colors text-left"
+          className="w-full flex items-center gap-2.5 bg-surface hover:bg-hair2 rounded-xl px-4 py-3 transition-colors text-left"
         >
-          <FileText className="w-4 h-4 text-[#0066cc] shrink-0" />
-          <span className="text-[13px] font-medium text-[#0066cc]">
+          <FileText className="w-4 h-4 text-info shrink-0" />
+          <span className="text-[13px] font-medium text-info">
             {loading ? "Loading transcript…" : "Show transcript"}
           </span>
-          {loading && <Loader2 className="w-3.5 h-3.5 text-[#0066cc] animate-spin ml-auto" />}
+          {loading && <Loader2 className="w-3.5 h-3.5 text-info animate-spin ml-auto" />}
         </button>
       )}
 
       {expanded && error && (
-        <div className="bg-[#fff3f3] rounded-xl px-4 py-3 text-[13px] text-[#cc0000]">
+        <div className="bg-dangertint rounded-xl px-4 py-3 text-[13px] text-dangertext">
           Failed to load transcript.{" "}
           <a href={url!} target="_blank" rel="noreferrer" className="underline">Open in new tab</a>
         </div>
       )}
 
       {expanded && text && (
-        <div className="bg-[#f5f5f7] rounded-xl overflow-hidden">
+        <div className="bg-surface rounded-xl overflow-hidden">
           <div className="max-h-80 overflow-y-auto px-4 py-3 space-y-2">
             {parseLines(text).map((line, i) => (
               <div
@@ -253,18 +253,18 @@ function TranscriptViewer({ url, loadingDetail }: { url: string | null; loadingD
                 {line.speaker !== "other" && (
                   <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                    line.speaker === "user" ? "bg-[#e5e5ea]" : "bg-[#0066cc]/10"
+                    line.speaker === "user" ? "bg-hair2" : "bg-info/10"
                   )}>
                     {line.speaker === "user"
-                      ? <User className="w-3 h-3 text-[#6e6e73]" />
-                      : <Bot className="w-3 h-3 text-[#0066cc]" />}
+                      ? <User className="w-3 h-3 text-mute" />
+                      : <Bot className="w-3 h-3 text-info" />}
                   </div>
                 )}
                 <div className={cn(
                   "rounded-2xl px-3 py-2 text-[12px] leading-relaxed max-w-[85%]",
-                  line.speaker === "user" ? "bg-white text-[#1d1d1f] rounded-tl-sm" :
-                  line.speaker === "agent" ? "bg-[#0066cc]/10 text-[#0055b3] rounded-tr-sm" :
-                  "text-[#6e6e73] italic w-full bg-transparent px-0 py-0.5"
+                  line.speaker === "user" ? "bg-card text-ink rounded-tl-sm" :
+                  line.speaker === "agent" ? "bg-info/10 text-infostrong rounded-tr-sm" :
+                  "text-mute italic w-full bg-transparent px-0 py-0.5"
                 )}>
                   {line.text}
                 </div>
@@ -305,27 +305,27 @@ function RunDetailPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-ink/20 backdrop-blur-sm" />
 
       {/* Panel */}
       <div
-        className="relative z-10 w-full max-w-xl h-full bg-white shadow-2xl flex flex-col overflow-hidden"
+        className="relative z-10 w-full max-w-xl h-full bg-card shadow-2xl flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-black/[0.06] shrink-0">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-ink/[0.06] shrink-0">
           <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
-            d.mode !== "inbound" ? "bg-[#0066cc]/10" : "bg-[#34c759]/10"
+            d.mode !== "inbound" ? "bg-info/10" : "bg-success/10"
           )}>
             {d.mode !== "inbound"
-              ? <PhoneOutgoing className="w-4 h-4 text-[#0066cc]" />
-              : <PhoneIncoming className="w-4 h-4 text-[#34c759]" />}
+              ? <PhoneOutgoing className="w-4 h-4 text-info" />
+              : <PhoneIncoming className="w-4 h-4 text-success" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold text-[#1d1d1f] truncate">
+            <p className="text-[14px] font-semibold text-ink truncate">
               {d.contact_name && d.contact_name !== "—" ? d.contact_name : (d.phone_number ?? "Unknown")}
             </p>
-            <p className="text-[12px] text-[#6e6e73]">Run #{d.run_id}</p>
+            <p className="text-[12px] text-mute">Run #{d.run_id}</p>
           </div>
           <span className={cn("inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full", S.bg, S.color)}>
             <span className={cn("w-1.5 h-1.5 rounded-full", S.dot)} />
@@ -333,7 +333,7 @@ function RunDetailPanel({
           </span>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73] shrink-0"
+            className="p-1.5 rounded-lg hover:bg-surface text-mute shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -342,7 +342,7 @@ function RunDetailPanel({
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {isLoading && (
-            <div className="flex items-center gap-2 text-[13px] text-[#6e6e73] bg-[#f5f5f7] rounded-xl px-4 py-3">
+            <div className="flex items-center gap-2 text-[13px] text-mute bg-surface rounded-xl px-4 py-3">
               <Loader2 className="w-4 h-4 animate-spin" />
               Loading run details…
             </div>
@@ -355,28 +355,28 @@ function RunDetailPanel({
               { icon: Coins, label: "Tokens", value: d.cost !== undefined ? String(d.cost) : "—" },
               { icon: Phone, label: "Phone", value: d.phone_number ?? "—" },
             ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="bg-[#f5f5f7] rounded-xl px-3 py-3">
+              <div key={label} className="bg-surface rounded-xl px-3 py-3">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <Icon className="w-3.5 h-3.5 text-[#6e6e73]" />
-                  <span className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider">{label}</span>
+                  <Icon className="w-3.5 h-3.5 text-mute" />
+                  <span className="text-[11px] font-semibold text-mute uppercase tracking-wider">{label}</span>
                 </div>
-                <p className="text-[14px] font-semibold text-[#1d1d1f] truncate">{value}</p>
+                <p className="text-[14px] font-semibold text-ink truncate">{value}</p>
               </div>
             ))}
           </div>
 
           {/* Agent + time */}
-          <div className="bg-[#f5f5f7] rounded-xl px-4 py-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#0066cc]/10 flex items-center justify-center shrink-0">
-              <Bot className="w-4 h-4 text-[#0066cc]" />
+          <div className="bg-surface rounded-xl px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-info/10 flex items-center justify-center shrink-0">
+              <Bot className="w-4 h-4 text-info" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] text-[#6e6e73]">Agent / Workflow</p>
-              <p className="text-[13px] font-medium text-[#1d1d1f] truncate">{d.agent_name}</p>
+              <p className="text-[12px] text-mute">Agent / Workflow</p>
+              <p className="text-[13px] font-medium text-ink truncate">{d.agent_name}</p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-[12px] text-[#6e6e73]">Time</p>
-              <p className="text-[12px] font-medium text-[#1d1d1f]">
+              <p className="text-[12px] text-mute">Time</p>
+              <p className="text-[12px] font-medium text-ink">
                 {d.created_at ? new Date(d.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
               </p>
             </div>
@@ -384,15 +384,15 @@ function RunDetailPanel({
 
           {/* Summary */}
           {d.summary && (
-            <div className="bg-[#f5f5f7] rounded-xl px-4 py-3">
-              <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-1.5">Summary</p>
-              <p className="text-[13px] text-[#1d1d1f] leading-relaxed">{d.summary}</p>
+            <div className="bg-surface rounded-xl px-4 py-3">
+              <p className="text-[11px] font-semibold text-mute uppercase tracking-wider mb-1.5">Summary</p>
+              <p className="text-[13px] text-ink leading-relaxed">{d.summary}</p>
             </div>
           )}
 
           {/* Recordings */}
           <div>
-            <p className="text-[12px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Recordings</p>
+            <p className="text-[12px] font-semibold text-mute uppercase tracking-wider mb-2">Recordings</p>
             {recordings.length > 0 ? (
               <div className="space-y-2">
                 {recordings.map(r => (
@@ -400,7 +400,7 @@ function RunDetailPanel({
                 ))}
               </div>
             ) : (
-              <div className="bg-[#f5f5f7] rounded-xl px-4 py-3 text-[13px] text-[#6e6e73]">
+              <div className="bg-surface rounded-xl px-4 py-3 text-[13px] text-mute">
                 {isLoading ? "Loading…" : "No recordings available"}
               </div>
             )}
@@ -412,12 +412,12 @@ function RunDetailPanel({
           {/* Gathered context */}
           {ctx && (
             <div>
-              <p className="text-[12px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Gathered Context</p>
-              <div className="bg-[#f5f5f7] rounded-xl px-4 py-3 space-y-2">
+              <p className="text-[12px] font-semibold text-mute uppercase tracking-wider mb-2">Gathered Context</p>
+              <div className="bg-surface rounded-xl px-4 py-3 space-y-2">
                 {Object.entries(ctx).map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-3 text-[13px]">
-                    <span className="text-[#6e6e73] capitalize">{k.replace(/_/g, " ")}</span>
-                    <span className="font-medium text-[#1d1d1f] text-right">{String(v)}</span>
+                    <span className="text-mute capitalize">{k.replace(/_/g, " ")}</span>
+                    <span className="font-medium text-ink text-right">{String(v)}</span>
                   </div>
                 ))}
               </div>
@@ -427,12 +427,12 @@ function RunDetailPanel({
           {/* Initial context */}
           {initCtx && (
             <div>
-              <p className="text-[12px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">Initial Context</p>
-              <div className="bg-[#f5f5f7] rounded-xl px-4 py-3 space-y-2">
+              <p className="text-[12px] font-semibold text-mute uppercase tracking-wider mb-2">Initial Context</p>
+              <div className="bg-surface rounded-xl px-4 py-3 space-y-2">
                 {Object.entries(initCtx).map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-3 text-[13px]">
-                    <span className="text-[#6e6e73] capitalize">{k.replace(/_/g, " ")}</span>
-                    <span className="font-medium text-[#1d1d1f] text-right">{String(v)}</span>
+                    <span className="text-mute capitalize">{k.replace(/_/g, " ")}</span>
+                    <span className="font-medium text-ink text-right">{String(v)}</span>
                   </div>
                 ))}
               </div>
@@ -452,7 +452,7 @@ export function CallsTab() {
   const [page, setPage] = useState(1)
   const [selectedRun, setSelectedRun] = useState<Run | null>(null)
 
-  // Fetch runs — API already fans out across all saved workflow IDs automatically
+  // Fetch runs — status filter maps disposition → completed | no_answer | in_progress
   const queryParams = `?page=${page}&limit=20${filterStatus !== "all" ? `&status=${filterStatus}` : ""}`
   const { data, isLoading } = useSWR(
     tenant?.voice_api_key ? `/api/calls${queryParams}` : null,
@@ -479,11 +479,11 @@ export function CallsTab() {
   if (!tenant?.voice_api_key) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="w-14 h-14 bg-[#f5f5f7] rounded-2xl flex items-center justify-center mb-4 border border-[rgba(0,0,0,0.08)]">
-          <Phone className="w-6 h-6 text-[#c7c7cc]" />
+        <div className="w-14 h-14 bg-surface rounded-2xl flex items-center justify-center mb-4 border border-[rgba(0,0,0,0.08)]">
+          <Phone className="w-6 h-6 text-faint" />
         </div>
-        <h3 className="text-[15px] font-semibold text-[#1d1d1f]">Voice API not configured</h3>
-        <p className="text-[13px] text-[#6e6e73] mt-1 max-w-xs">
+        <h3 className="text-[15px] font-semibold text-ink">Voice API not configured</h3>
+        <p className="text-[13px] text-mute mt-1 max-w-xs">
           Add your Voice API key in Profile &rarr; Integrations to see call runs.
         </p>
       </div>
@@ -494,32 +494,40 @@ export function CallsTab() {
     <>
       <div className="space-y-4">
         {/* Toolbar */}
-        <div className="bg-white rounded-2xl hairline px-4 py-3 flex flex-wrap items-center gap-3">
+        <div className="bg-card rounded-2xl hairline px-4 py-3 flex flex-wrap items-center gap-3">
           {/* Search */}
-          <div className="flex items-center gap-2 bg-[#f5f5f7] rounded-full px-3.5 py-2">
-            <Search className="w-3.5 h-3.5 text-[#6e6e73] shrink-0" />
+          <div className="flex items-center gap-2 bg-surface rounded-full px-3.5 py-2">
+            <Search className="w-3.5 h-3.5 text-mute shrink-0" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search…"
-              className="bg-transparent text-[13px] text-[#1d1d1f] outline-none w-28 placeholder:text-[#6e6e73]"
+              className="bg-transparent text-[13px] text-ink outline-none w-28 placeholder:text-mute"
             />
           </div>
 
-          {/* Status filter pills */}
+          {/* Status filter — based on Dograh disposition mapping */}
           <div className="flex items-center gap-1 flex-wrap">
-            {(["all", "completed", "failed", "no_answer"] as const).map(s => (
+            {([
+              { value: "all",         label: "All" },
+              { value: "completed",   label: "Completed" },
+              { value: "in_progress", label: "Busy / Live" },
+              { value: "no_answer",   label: "No Answer" },
+            ] as const).map(({ value, label }) => (
               <button
-                key={s}
-                onClick={() => { setFilterStatus(s); setPage(1) }}
+                key={value}
+                onClick={() => { setFilterStatus(value); setPage(1) }}
                 className={cn(
-                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
-                  filterStatus === s
-                    ? "bg-[#0066cc] text-white"
-                    : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
+                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors",
+                  filterStatus === value
+                    ? value === "completed"   ? "bg-success text-white"
+                      : value === "in_progress" ? "bg-info text-white"
+                      : value === "no_answer"   ? "bg-warn text-white"
+                      : "bg-ink text-white"
+                    : "bg-surface text-mute hover:bg-hair2"
                 )}
               >
-                {s === "all" ? "All" : s.replace("_", " ")}
+                {label}
               </button>
             ))}
           </div>
@@ -533,11 +541,11 @@ export function CallsTab() {
         )}
 
         {/* Table */}
-        <div className="bg-white rounded-2xl hairline overflow-hidden">
+        <div className="bg-card rounded-2xl hairline overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-black/[0.06]">
+                <tr className="border-b border-ink/[0.06]">
                   {[
                     { label: "Contact", cls: "" },
                     { label: "Agent", cls: "hidden lg:table-cell" },
@@ -548,7 +556,7 @@ export function CallsTab() {
                     { label: "Media", cls: "hidden sm:table-cell" },
                     { label: "", cls: "" },
                   ].map((h, i) => (
-                    <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider", h.cls)}>
+                    <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-mute uppercase tracking-wider", h.cls)}>
                       {h.label}
                     </th>
                   ))}
@@ -557,7 +565,7 @@ export function CallsTab() {
               <tbody>
                 {isLoading ? (
                   [...Array(6)].map((_, i) => (
-                    <tr key={i} className="border-b border-black/[0.04]">
+                    <tr key={i} className="border-b border-ink/[0.04]">
                       {[...Array(8)].map((_, j) => (
                         <td key={j} className="px-4 py-3.5">
                           <div className="h-4 bg-gray-100 rounded animate-pulse" />
@@ -568,16 +576,16 @@ export function CallsTab() {
                 ) : noWorkflowsConfigured ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-14 text-center">
-                      <Bot className="w-8 h-8 text-[#c7c7cc] mx-auto mb-2" />
-                      <p className="text-[14px] font-semibold text-[#1d1d1f]">No workflows configured</p>
-                      <p className="text-[13px] text-[#6e6e73] mt-1">Go to Profile &rarr; Integrations &rarr; Voice and add your workflow IDs.</p>
+                      <Bot className="w-8 h-8 text-faint mx-auto mb-2" />
+                      <p className="text-[14px] font-semibold text-ink">No workflows configured</p>
+                      <p className="text-[13px] text-mute mt-1">Go to Profile &rarr; Integrations &rarr; Voice and add your workflow IDs.</p>
                     </td>
                   </tr>
                 ) : runs.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-14 text-center">
-                      <Phone className="w-8 h-8 text-[#c7c7cc] mx-auto mb-2" />
-                      <p className="text-[14px] font-medium text-[#6e6e73]">No runs found</p>
+                      <Phone className="w-8 h-8 text-faint mx-auto mb-2" />
+                      <p className="text-[14px] font-medium text-mute">No runs found</p>
                     </td>
                   </tr>
                 ) : (
@@ -589,25 +597,25 @@ export function CallsTab() {
                       <tr
                         key={run.run_id}
                         onClick={() => setSelectedRun(run)}
-                        className="border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer"
+                        className="border-b border-ink/[0.04] hover:bg-surface transition-colors cursor-pointer"
                       >
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center shrink-0">
-                              <User className="w-3.5 h-3.5 text-[#6e6e73]" />
+                            <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center shrink-0">
+                              <User className="w-3.5 h-3.5 text-mute" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[13px] font-medium text-[#1d1d1f] truncate">
+                              <p className="text-[13px] font-medium text-ink truncate">
                                 {run.contact_name && run.contact_name !== "—" ? run.contact_name : (run.phone_number ?? "Unknown")}
                               </p>
                               {run.phone_number && run.contact_name !== "—" && (
-                                <p className="text-[11px] text-[#6e6e73]">{run.phone_number}</p>
+                                <p className="text-[11px] text-mute">{run.phone_number}</p>
                               )}
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3.5 hidden lg:table-cell">
-                          <p className="text-[13px] text-[#1d1d1f] truncate max-w-[160px]">{run.agent_name ?? "—"}</p>
+                          <p className="text-[13px] text-ink truncate max-w-[160px]">{run.agent_name ?? "—"}</p>
                         </td>
                         <td className="px-4 py-3.5">
                           <span className={cn("inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full", S.bg, S.color)}>
@@ -616,35 +624,35 @@ export function CallsTab() {
                           </span>
                         </td>
                         <td className="px-4 py-3.5 hidden md:table-cell">
-                          <span className="text-[13px] text-[#1d1d1f]">{formatDuration(run.duration)}</span>
+                          <span className="text-[13px] text-ink">{formatDuration(run.duration)}</span>
                         </td>
                         <td className="px-4 py-3.5 hidden md:table-cell">
-                          <span className="text-[13px] text-[#1d1d1f]">
+                          <span className="text-[13px] text-ink">
                             {run.cost !== undefined ? run.cost : "—"}
                           </span>
                         </td>
                         <td className="px-4 py-3.5 hidden sm:table-cell">
-                          <span className="text-[12px] text-[#6e6e73]">
+                          <span className="text-[12px] text-mute">
                             {run.created_at ? new Date(run.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
                           </span>
                         </td>
                         <td className="px-4 py-3.5 hidden sm:table-cell">
                           <div className="flex items-center gap-1.5">
                             {run.recording_url && (
-                              <span className="w-6 h-6 rounded-md bg-[#0066cc]/10 flex items-center justify-center" title="Has recording">
-                                <Mic className="w-3 h-3 text-[#0066cc]" />
+                              <span className="w-6 h-6 rounded-md bg-info/10 flex items-center justify-center" title="Has recording">
+                                <Mic className="w-3 h-3 text-info" />
                               </span>
                             )}
                             {run.transcript_url && (
-                              <span className="w-6 h-6 rounded-md bg-[#34c759]/10 flex items-center justify-center" title="Has transcript">
-                                <FileText className="w-3 h-3 text-[#34c759]" />
+                              <span className="w-6 h-6 rounded-md bg-success/10 flex items-center justify-center" title="Has transcript">
+                                <FileText className="w-3 h-3 text-success" />
                               </span>
                             )}
-                            {!hasMedia && <span className="text-[11px] text-[#c7c7cc]">—</span>}
+                            {!hasMedia && <span className="text-[11px] text-faint">—</span>}
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
-                          <ChevronRight className="w-4 h-4 text-[#c7c7cc]" />
+                          <ChevronRight className="w-4 h-4 text-faint" />
                         </td>
                       </tr>
                     )
@@ -655,23 +663,23 @@ export function CallsTab() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-black/[0.04]">
-            <p className="text-[12px] text-[#6e6e73]">{runs.length} run{runs.length !== 1 ? "s" : ""}</p>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-ink/[0.04]">
+            <p className="text-[12px] text-mute">{runs.length} run{runs.length !== 1 ? "s" : ""}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="flex items-center gap-1 text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0] disabled:opacity-40 transition-colors"
+                className="flex items-center gap-1 text-[12px] font-medium px-3 py-1.5 rounded-full bg-surface text-mute hover:bg-hair2 disabled:opacity-40 transition-colors"
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Prev
               </button>
-              <span className="text-[12px] font-semibold text-[#0066cc] w-7 h-7 rounded-full bg-[#0066cc]/10 flex items-center justify-center">
+              <span className="text-[12px] font-semibold text-info w-7 h-7 rounded-full bg-info/10 flex items-center justify-center">
                 {page}
               </span>
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={allRuns.length < 20}
-                className="flex items-center gap-1 text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0] disabled:opacity-40 transition-colors"
+                className="flex items-center gap-1 text-[12px] font-medium px-3 py-1.5 rounded-full bg-surface text-mute hover:bg-hair2 disabled:opacity-40 transition-colors"
               >
                 Next <ChevronRight className="w-3.5 h-3.5" />
               </button>

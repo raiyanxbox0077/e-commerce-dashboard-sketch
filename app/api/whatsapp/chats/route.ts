@@ -20,14 +20,15 @@ export async function GET(req: Request) {
   if (!phoneId) return NextResponse.json({ error: 'BotSailor Phone Number ID not configured. Add it in Profile > Integrations.' }, { status: 400 })
 
   const { searchParams } = new URL(req.url)
-  const page = searchParams.get('page') ?? '1'
-  const offset = ((parseInt(page) - 1) * 20).toString()
+  const page  = parseInt(searchParams.get('page')  ?? '1')
+  const limit = parseInt(searchParams.get('limit') ?? '20')
+  const offset = ((page - 1) * limit).toString()
 
   // BotSailor subscriber list with latest message ordering
   const params = new URLSearchParams({
     apiToken: apiKey,
     phone_number_id: phoneId,
-    limit: '20',
+    limit: String(limit),
     offset,
     orderBy: '1',
   })

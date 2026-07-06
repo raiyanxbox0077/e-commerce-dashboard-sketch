@@ -3,21 +3,88 @@
 import { useState } from "react"
 import useSWR from "swr"
 import {
-  Search, ExternalLink, PhoneCall, MessageCircle,
-  ShoppingBag, AlertCircle, X, Star, HeadphonesIcon
+  Search, ExternalLink, PhoneCall,
+  ShoppingBag, AlertCircle, X, Star, ChevronRight, Loader2,
+  PhoneOutgoing,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTenant } from "@/hooks/use-tenant"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
+// ─── Run Mini Panel (fetches call detail for a RUN_ID inline) ────────────────
+
+interface RunMiniPanelProps { runId: string; onClose: () => void }
+
+function RunMiniPanel({ runId, onClose }: RunMiniPanelProps) {
+  const { data, isLoading } = useSWR(`/api/calls/${runId}`, fetcher)
+  const d = data && !data.error ? data : null
+
+  const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
+    completed:   { label: "Completed",   color: "text-successtext",  bg: "bg-success/10" },
+    failed:      { label: "Failed",      color: "text-dangertext",  bg: "bg-danger/10" },
+    no_answer:   { label: "No Answer",   color: "text-warntext",  bg: "bg-warn/10" },
+    in_progress: { label: "In Progress", color: "text-info",  bg: "bg-info/10" },
+  }
+
+  const S = d?.status ? (STATUS_CFG[d.status] ?? STATUS_CFG.failed) : null
+
+  return (
+    <div className="mt-3 bg-surface rounded-xl overflow-hidden border border-ink/[0.06]">
+      <div className="flex items-center gap-2 px-3.5 py-2.5 bg-card border-b border-ink/[0.06]">
+        <PhoneOutgoing className="w-3.5 h-3.5 text-info shrink-0" />
+        <p className="text-[12px] font-semibold text-ink flex-1 font-mono truncate">{runId}</p>
+        {S && <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", S.bg, S.color)}>{S.label}</span>}
+        <button onClick={onClose} className="p-1 rounded-md hover:bg-surface text-mute">
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+      <div className="px-3.5 py-3 space-y-2">
+        {isLoading && (
+          <div className="flex items-center gap-2 text-[12px] text-mute">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading call details…
+          </div>
+        )}
+        {data?.error && <p className="text-[12px] text-dangertext">Could not load: {data.error}</p>}
+        {d && (
+          <div className="space-y-1.5">
+            {[
+              ["Phone",    d.phone_number ?? "—"],
+              ["Agent",    d.agent_name   ?? "—"],
+              ["Duration", d.duration ? `${Math.floor(d.duration / 60)}m ${d.duration % 60}s` : "—"],
+              ["Time",     d.created_at ? new Date(d.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-3 text-[12px]">
+                <span className="text-mute">{k}</span>
+                <span className="font-medium text-ink truncate text-right max-w-[60%]">{v}</span>
+              </div>
+            ))}
+            {d.summary && (
+              <div className="mt-2 pt-2 border-t border-ink/[0.06]">
+                <p className="text-[11px] font-semibold text-mute uppercase tracking-wider mb-1">Summary</p>
+                <p className="text-[12px] text-ink leading-relaxed">{d.summary}</p>
+              </div>
+            )}
+            {d.recording_url && (
+              <a href={d.recording_url} target="_blank" rel="noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] text-info hover:underline">
+                <PhoneCall className="w-3 h-3" /> Listen to recording
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
 const CALL_STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  COMPLETED:   { label: "Completed",   color: "text-[#1a7a32]", bg: "bg-[#34c759]/10" },
-  completed:   { label: "Completed",   color: "text-[#1a7a32]", bg: "bg-[#34c759]/10" },
-  FAILED:      { label: "Failed",      color: "text-[#cc0000]", bg: "bg-[#ff3b30]/10" },
-  IN_PROGRESS: { label: "In Progress", color: "text-[#0066cc]", bg: "bg-[#0066cc]/10" },
+  COMPLETED:   { label: "Completed",   color: "text-successtext", bg: "bg-success/10" },
+  completed:   { label: "Completed",   color: "text-successtext", bg: "bg-success/10" },
+  FAILED:      { label: "Failed",      color: "text-dangertext", bg: "bg-danger/10" },
+  IN_PROGRESS: { label: "In Progress", color: "text-info", bg: "bg-info/10" },
 }
 
 function StarRating({ rating }: { rating?: number }) {
@@ -25,7 +92,7 @@ function StarRating({ rating }: { rating?: number }) {
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map(i => (
-        <Star key={i} className={cn("w-3.5 h-3.5", i <= n ? "text-[#ff9500] fill-[#ff9500]" : "text-[#c7c7cc]")} />
+        <Star key={i} className={cn("w-3.5 h-3.5", i <= n ? "text-warn fill-warn" : "text-faint")} />
       ))}
     </div>
   )
@@ -86,32 +153,33 @@ const SAMPLE_COD: CodOrder = {
   state: "Karnataka",
   pincode: 560001,
   status: "confirmed",
-  RUN_ID: "run_sample_001",
+  RUN_ID: "432",
 }
 
 const COD_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  completed:  { label: "Completed",  color: "text-[#1a7a32]", bg: "bg-[#34c759]/10" },
-  confirmed:  { label: "Confirmed",  color: "text-[#1a7a32]", bg: "bg-[#34c759]/10" },
-  rejected:   { label: "Rejected",   color: "text-[#cc0000]", bg: "bg-[#ff3b30]/10" },
-  pending:    { label: "Pending",    color: "text-[#8a5900]", bg: "bg-[#ff9500]/10" },
-  no_answer:  { label: "No Answer",  color: "text-[#8a5900]", bg: "bg-[#ff9500]/10" },
+  completed:  { label: "Completed",  color: "text-successtext", bg: "bg-success/10" },
+  confirmed:  { label: "Confirmed",  color: "text-successtext", bg: "bg-success/10" },
+  rejected:   { label: "Rejected",   color: "text-dangertext", bg: "bg-danger/10" },
+  pending:    { label: "Pending",    color: "text-warntext", bg: "bg-warn/10" },
+  no_answer:  { label: "No Answer",  color: "text-warntext", bg: "bg-warn/10" },
 }
 
 function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => void }) {
-  const statusKey = (order.status ?? "pending").toLowerCase()
-  const S = COD_STATUS[statusKey] ?? { label: order.status ?? "—", color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
+  const [expandedRun, setExpandedRun] = useState(false)
+  const statusKey = codOrderStatus(order)
+  const S = COD_STATUS[statusKey] ?? { label: statusKey, color: "text-mute", bg: "bg-surface" }
   const orderId = order.order_number ?? `#${order["order id"] ?? "—"}`
 
   return (
-    <div className="bg-white rounded-2xl hairline overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06]">
+    <div className="bg-card rounded-2xl hairline overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-ink/[0.06]">
         <div>
-          <p className="text-[15px] font-semibold text-[#1d1d1f]">{orderId}</p>
-          <p className="text-[12px] text-[#6e6e73]">{order.customer_name ?? "—"} · {order.order_date ? new Date(order.order_date).toLocaleDateString("en-IN") : "—"}</p>
+          <p className="text-[15px] font-semibold text-ink">{orderId}</p>
+          <p className="text-[12px] text-mute">{order.customer_name ?? "—"} · {order.order_date ? new Date(order.order_date).toLocaleDateString("en-IN") : "—"}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", S.bg, S.color)}>{S.label}</span>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73]"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface text-mute"><X className="w-4 h-4" /></button>
         </div>
       </div>
       <div className="overflow-y-auto px-5 py-4 space-y-4 max-h-[70vh]">
@@ -131,17 +199,25 @@ function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => vo
           ]} />
         </Section>
         <Section label="Delivery">
-          <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-3 text-[13px] text-[#1d1d1f]">
+          <div className="bg-surface rounded-xl px-3.5 py-3 text-[13px] text-ink">
             {[order.address_line1, order.address_line2, order.city, order.state, order.pincode].filter(Boolean).join(", ") || "—"}
           </div>
         </Section>
         {order.RUN_ID && (
-          <Section label="Call">
-            <Grid2 items={[["Run ID", order.RUN_ID]]} mono />
+          <Section label="Workflow Run">
+            <button
+              onClick={() => setExpandedRun(v => !v)}
+              className="flex items-center gap-2 w-full bg-surface hover:bg-hair2 rounded-xl px-3.5 py-2.5 transition-colors text-left"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5 text-info shrink-0" />
+              <code className="text-[12px] font-mono text-info flex-1 truncate">{order.RUN_ID}</code>
+              <ChevronRight className={cn("w-3.5 h-3.5 text-mute shrink-0 transition-transform", expandedRun && "rotate-90")} />
+            </button>
+            {expandedRun && <RunMiniPanel runId={order.RUN_ID} onClose={() => setExpandedRun(false)} />}
           </Section>
         )}
       </div>
-      <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
+      <div className="px-5 py-4 border-t border-ink/[0.06] flex flex-wrap gap-2">
         {order.Recording_url && (
           <a href={order.Recording_url} target="_blank" rel="noreferrer" className="action-link-blue">
             <PhoneCall className="w-3.5 h-3.5" /> Recording
@@ -152,38 +228,45 @@ function CodDetailPanel({ order, onClose }: { order: CodOrder; onClose: () => vo
             <ExternalLink className="w-3.5 h-3.5" /> Transcript
           </a>
         )}
-        <button className="action-btn-blue"><PhoneCall className="w-3.5 h-3.5" /> Trigger Call</button>
       </div>
     </div>
   )
 }
 
+function codOrderStatus(order: CodOrder): string {
+  const oc = order["order confirm"]
+  if (oc === "true")  return "confirmed"
+  if (oc === "false") return "rejected"
+  // null / undefined = pending
+  return "pending"
+}
+
 function CodRow({ order, selected, onSelect }: { order: CodOrder; selected: boolean; onSelect: () => void }) {
-  const statusKey = (order.status ?? "pending").toLowerCase()
-  const S = COD_STATUS[statusKey] ?? { label: order.status ?? "—", color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }
+  const statusKey = codOrderStatus(order)
+  const S = COD_STATUS[statusKey] ?? { label: statusKey, color: "text-mute", bg: "bg-surface" }
   const orderId = order.order_number ?? `#${order["order id"] ?? "—"}`
   return (
-    <tr className={cn("border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer", selected && "bg-[#0066cc]/5")} onClick={onSelect}>
+    <tr className={cn("border-b border-ink/[0.04] hover:bg-surface transition-colors cursor-pointer", selected && "bg-info/5")} onClick={onSelect}>
       <td className="px-4 py-3.5">
-        <p className="text-[13px] font-semibold text-[#1d1d1f]">{orderId}</p>
-        <p className="text-[11px] text-[#6e6e73]">{order.order_date ? new Date(order.order_date).toLocaleDateString("en-IN") : "—"}</p>
+        <p className="text-[13px] font-semibold text-ink">{orderId}</p>
+        <p className="text-[11px] text-mute">{order.order_date ? new Date(order.order_date).toLocaleDateString("en-IN") : "—"}</p>
       </td>
       <td className="px-4 py-3.5 hidden sm:table-cell">
-        <p className="text-[13px] font-medium text-[#1d1d1f]">{order.customer_name ?? "—"}</p>
-        <p className="text-[11px] text-[#6e6e73]">{order.phone ?? "—"}</p>
+        <p className="text-[13px] font-medium text-ink">{order.customer_name ?? "—"}</p>
+        <p className="text-[11px] text-mute">{order.phone ?? "—"}</p>
       </td>
       <td className="px-4 py-3.5 hidden lg:table-cell">
-        <p className="text-[13px] text-[#1d1d1f] truncate max-w-[180px]">{order.product_name ?? "—"}</p>
-        <p className="text-[11px] text-[#6e6e73]">{order.city ?? "—"}</p>
+        <p className="text-[13px] text-ink truncate max-w-[180px]">{order.product_name ?? "—"}</p>
+        <p className="text-[11px] text-mute">{order.city ?? "—"}</p>
       </td>
       <td className="px-4 py-3.5">
-        <p className="text-[14px] font-semibold text-[#1d1d1f]">₹{(order.total_amount ?? 0).toLocaleString("en-IN")}</p>
+        <p className="text-[14px] font-semibold text-ink">₹{(order.total_amount ?? 0).toLocaleString("en-IN")}</p>
       </td>
       <td className="px-4 py-3.5">
         <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", S.bg, S.color)}>{S.label}</span>
       </td>
       <td className="px-4 py-3.5 hidden md:table-cell">
-        <code className="text-[11px] font-mono text-[#6e6e73]">{order.RUN_ID ?? "—"}</code>
+        <code className="text-[11px] font-mono text-mute">{order.RUN_ID ?? "—"}</code>
       </td>
     </tr>
   )
@@ -214,6 +297,7 @@ interface CartItem {
   abandoned_checkout_url?: string
   "call status"?: string
   "WhatsApp Status"?: string
+  RUN_ID?: string | null
 }
 
 const SAMPLE_CART: CartItem = {
@@ -239,18 +323,19 @@ const SAMPLE_CART: CartItem = {
 }
 
 function CartDetailPanel({ row, onClose }: { row: CartItem; onClose: () => void }) {
+  const [expandedRun, setExpandedRun] = useState(false)
   const callSt = row["call status"] ?? ""
-  const CS = CALL_STATUS_MAP[callSt] ?? (callSt ? { label: callSt, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" } : null)
+  const CS = CALL_STATUS_MAP[callSt] ?? (callSt ? { label: callSt, color: "text-mute", bg: "bg-surface" } : null)
   return (
-    <div className="bg-white rounded-2xl hairline overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06]">
+    <div className="bg-card rounded-2xl hairline overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-ink/[0.06]">
         <div>
-          <p className="text-[15px] font-semibold text-[#1d1d1f]">{row.customer_name ?? "—"}</p>
-          <p className="text-[12px] text-[#6e6e73]">{row.phone ?? "—"} · {row.order_date ? new Date(row.order_date).toLocaleDateString("en-IN") : "—"}</p>
+          <p className="text-[15px] font-semibold text-ink">{row.customer_name ?? "—"}</p>
+          <p className="text-[12px] text-mute">{row.phone ?? "—"} · {row.order_date ? new Date(row.order_date).toLocaleDateString("en-IN") : "—"}</p>
         </div>
         <div className="flex items-center gap-2">
           {CS && <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>{CS.label}</span>}
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73]"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface text-mute"><X className="w-4 h-4" /></button>
         </div>
       </div>
       <div className="overflow-y-auto px-5 py-4 space-y-4 max-h-[70vh]">
@@ -267,22 +352,33 @@ function CartDetailPanel({ row, onClose }: { row: CartItem; onClose: () => void 
           ]} />
         </Section>
         <Section label="Delivery">
-          <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-3 text-[13px] text-[#1d1d1f]">
+          <div className="bg-surface rounded-xl px-3.5 py-3 text-[13px] text-ink">
             {[row.address_line1, row.address_line2, row.city, row.state, row.pincode].filter(Boolean).join(", ") || "—"}
           </div>
         </Section>
         <Section label="WhatsApp">
           <Grid2 items={[["Status", row["WhatsApp Status"] ?? "—"]]} />
         </Section>
+        {row.RUN_ID && (
+          <Section label="Workflow Run">
+            <button
+              onClick={() => setExpandedRun(v => !v)}
+              className="flex items-center gap-2 w-full bg-surface hover:bg-hair2 rounded-xl px-3.5 py-2.5 transition-colors text-left"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5 text-info shrink-0" />
+              <code className="text-[12px] font-mono text-info flex-1 truncate">{row.RUN_ID}</code>
+              <ChevronRight className={cn("w-3.5 h-3.5 text-mute shrink-0 transition-transform", expandedRun && "rotate-90")} />
+            </button>
+            {expandedRun && <RunMiniPanel runId={row.RUN_ID} onClose={() => setExpandedRun(false)} />}
+          </Section>
+        )}
       </div>
-      <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
+      <div className="px-5 py-4 border-t border-ink/[0.06] flex flex-wrap gap-2">
         {row.abandoned_checkout_url && (
           <a href={row.abandoned_checkout_url} target="_blank" rel="noreferrer" className="action-link-blue">
             <ExternalLink className="w-3.5 h-3.5" /> Open Checkout
           </a>
         )}
-        <button className="action-btn-green"><MessageCircle className="w-3.5 h-3.5" /> WA Recovery</button>
-        <button className="action-btn-blue"><PhoneCall className="w-3.5 h-3.5" /> Trigger Call</button>
       </div>
     </div>
   )
@@ -290,22 +386,22 @@ function CartDetailPanel({ row, onClose }: { row: CartItem; onClose: () => void 
 
 function CartRow({ row, selected, onSelect }: { row: CartItem; selected: boolean; onSelect: () => void }) {
   const callSt = row["call status"] ?? ""
-  const CS = CALL_STATUS_MAP[callSt] ?? (callSt ? { label: callSt, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" } : null)
+  const CS = CALL_STATUS_MAP[callSt] ?? (callSt ? { label: callSt, color: "text-mute", bg: "bg-surface" } : null)
   return (
-    <tr className={cn("border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer", selected && "bg-[#0066cc]/5")} onClick={onSelect}>
+    <tr className={cn("border-b border-ink/[0.04] hover:bg-surface transition-colors cursor-pointer", selected && "bg-info/5")} onClick={onSelect}>
       <td className="px-4 py-3.5">
-        <p className="text-[13px] font-medium text-[#1d1d1f]">{row.customer_name ?? "—"}</p>
-        <p className="text-[11px] text-[#6e6e73]">{row.phone ?? "—"}</p>
+        <p className="text-[13px] font-medium text-ink">{row.customer_name ?? "—"}</p>
+        <p className="text-[11px] text-mute">{row.phone ?? "—"}</p>
       </td>
       <td className="px-4 py-3.5 hidden lg:table-cell">
-        <p className="text-[13px] text-[#1d1d1f] truncate max-w-[180px]">{row.product_name ?? "—"}</p>
-        <p className="text-[11px] text-[#6e6e73]">{row.variant ?? "—"}</p>
+        <p className="text-[13px] text-ink truncate max-w-[180px]">{row.product_name ?? "—"}</p>
+        <p className="text-[11px] text-mute">{row.variant ?? "—"}</p>
       </td>
       <td className="px-4 py-3.5">
-        <p className="text-[14px] font-semibold text-[#1d1d1f]">₹{(row.total_amount ?? 0).toLocaleString("en-IN")}</p>
+        <p className="text-[14px] font-semibold text-ink">₹{(row.total_amount ?? 0).toLocaleString("en-IN")}</p>
       </td>
       <td className="px-4 py-3.5 hidden sm:table-cell">
-        <span className="text-[12px] text-[#6e6e73]">{row.order_date ? new Date(row.order_date).toLocaleDateString("en-IN") : "—"}</span>
+        <span className="text-[12px] text-mute">{row.order_date ? new Date(row.order_date).toLocaleDateString("en-IN") : "—"}</span>
       </td>
       <td className="px-4 py-3.5">
         {CS && <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>{CS.label}</span>}
@@ -344,31 +440,32 @@ const SAMPLE_SUPPORT: SupportTicket = {
   status: "in_progress",
   whatsapp_status: "sent",
   call_status: "COMPLETED",
-  run_id: "run_support_001",
+  run_id: "407",
   resolution: "Exchange initiated. Replacement dispatched within 2 business days.",
 }
 
 const TICKET_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  open:        { label: "Open",        color: "text-[#cc0000]",  bg: "bg-[#ff3b30]/10" },
-  in_progress: { label: "In Progress", color: "text-[#0066cc]",  bg: "bg-[#0066cc]/10" },
-  resolved:    { label: "Resolved",    color: "text-[#1a7a32]",  bg: "bg-[#34c759]/10" },
-  closed:      { label: "Closed",      color: "text-[#6e6e73]",  bg: "bg-[#f5f5f7]"    },
-  pending:     { label: "Pending",     color: "text-[#8a5900]",  bg: "bg-[#ff9500]/10" },
+  open:        { label: "Open",        color: "text-dangertext",  bg: "bg-danger/10" },
+  in_progress: { label: "In Progress", color: "text-info",  bg: "bg-info/10" },
+  resolved:    { label: "Resolved",    color: "text-successtext",  bg: "bg-success/10" },
+  closed:      { label: "Closed",      color: "text-mute",  bg: "bg-surface"    },
+  pending:     { label: "Pending",     color: "text-warntext",  bg: "bg-warn/10" },
 }
 
 function SupportDetailPanel({ ticket, onClose }: { ticket: SupportTicket; onClose: () => void }) {
+  const [expandedRun, setExpandedRun] = useState(false)
   const S = TICKET_STATUS[(ticket.status ?? "open").toLowerCase()] ?? TICKET_STATUS.open
-  const CS = ticket.call_status ? (CALL_STATUS_MAP[ticket.call_status] ?? { label: ticket.call_status, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }) : null
+  const CS = ticket.call_status ? (CALL_STATUS_MAP[ticket.call_status] ?? { label: ticket.call_status, color: "text-mute", bg: "bg-surface" }) : null
   return (
-    <div className="bg-white rounded-2xl hairline overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06]">
+    <div className="bg-card rounded-2xl hairline overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-ink/[0.06]">
         <div>
-          <p className="text-[15px] font-semibold text-[#1d1d1f]">{ticket.customer_name ?? "Unknown"}</p>
-          <p className="text-[12px] text-[#6e6e73]">Ticket #{ticket.id} · {ticket.order_date ? new Date(ticket.order_date).toLocaleDateString("en-IN") : "—"}</p>
+          <p className="text-[15px] font-semibold text-ink">{ticket.customer_name ?? "Unknown"}</p>
+          <p className="text-[12px] text-mute">Ticket #{ticket.id} · {ticket.order_date ? new Date(ticket.order_date).toLocaleDateString("en-IN") : "—"}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", S.bg, S.color)}>{S.label}</span>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73]"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface text-mute"><X className="w-4 h-4" /></button>
         </div>
       </div>
       <div className="overflow-y-auto px-5 py-4 space-y-4 max-h-[70vh]">
@@ -376,21 +473,21 @@ function SupportDetailPanel({ ticket, onClose }: { ticket: SupportTicket; onClos
           <Grid2 items={[["Phone", ticket.phone ?? "—"], ["Email", ticket.email ?? "—"]]} />
         </Section>
         <Section label="Issue">
-          <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-3 mb-2">
-            <p className="text-[11px] text-[#6e6e73] mb-1">Type</p>
-            <p className="text-[13px] font-medium text-[#1d1d1f]">{ticket.issue_type ?? "—"}</p>
+          <div className="bg-surface rounded-xl px-3.5 py-3 mb-2">
+            <p className="text-[11px] text-mute mb-1">Type</p>
+            <p className="text-[13px] font-medium text-ink">{ticket.issue_type ?? "—"}</p>
           </div>
           {ticket.issue_description && (
-            <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-3">
-              <p className="text-[11px] text-[#6e6e73] mb-1">Description</p>
-              <p className="text-[13px] text-[#1d1d1f] leading-relaxed">{ticket.issue_description}</p>
+            <div className="bg-surface rounded-xl px-3.5 py-3">
+              <p className="text-[11px] text-mute mb-1">Description</p>
+              <p className="text-[13px] text-ink leading-relaxed">{ticket.issue_description}</p>
             </div>
           )}
         </Section>
         {ticket.resolution && (
           <Section label="Resolution">
-            <div className="bg-[#34c759]/5 border border-[#34c759]/20 rounded-xl px-3.5 py-3">
-              <p className="text-[13px] text-[#1d1d1f] leading-relaxed">{ticket.resolution}</p>
+            <div className="bg-success/5 border border-success/20 rounded-xl px-3.5 py-3">
+              <p className="text-[13px] text-ink leading-relaxed">{ticket.resolution}</p>
             </div>
           </Section>
         )}
@@ -398,15 +495,25 @@ function SupportDetailPanel({ ticket, onClose }: { ticket: SupportTicket; onClos
           <Grid2 items={[
             ["WA Status", ticket.whatsapp_status ?? "—"],
             ["Call Status", CS?.label ?? "—"],
-            ["Run ID", ticket.run_id ?? "—"],
           ]} mono />
         </Section>
+        {ticket.run_id && (
+          <Section label="Workflow Run">
+            <button
+              onClick={() => setExpandedRun(v => !v)}
+              className="flex items-center gap-2 w-full bg-surface hover:bg-hair2 rounded-xl px-3.5 py-2.5 transition-colors text-left"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5 text-info shrink-0" />
+              <code className="text-[12px] font-mono text-info flex-1 truncate">{ticket.run_id}</code>
+              <ChevronRight className={cn("w-3.5 h-3.5 text-mute shrink-0 transition-transform", expandedRun && "rotate-90")} />
+            </button>
+            {expandedRun && <RunMiniPanel runId={ticket.run_id} onClose={() => setExpandedRun(false)} />}
+          </Section>
+        )}
       </div>
-      <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
+      <div className="px-5 py-4 border-t border-ink/[0.06] flex flex-wrap gap-2">
         {ticket.recording_url && <a href={ticket.recording_url} target="_blank" rel="noreferrer" className="action-link-blue"><PhoneCall className="w-3.5 h-3.5" /> Recording</a>}
         {ticket.transcript_url && <a href={ticket.transcript_url} target="_blank" rel="noreferrer" className="action-link-gray"><ExternalLink className="w-3.5 h-3.5" /> Transcript</a>}
-        <button className="action-btn-green"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
-        <button className="action-btn-blue"><PhoneCall className="w-3.5 h-3.5" /> Call</button>
       </div>
     </div>
   )
@@ -416,23 +523,23 @@ function SupportRow({ ticket, selected, onSelect }: { ticket: SupportTicket; sel
   const S = TICKET_STATUS[(ticket.status ?? "open").toLowerCase()] ?? TICKET_STATUS.open
   const CS = ticket.call_status ? (CALL_STATUS_MAP[ticket.call_status] ?? null) : null
   return (
-    <tr className={cn("border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer", selected && "bg-[#0066cc]/5")} onClick={onSelect}>
+    <tr className={cn("border-b border-ink/[0.04] hover:bg-surface transition-colors cursor-pointer", selected && "bg-info/5")} onClick={onSelect}>
       <td className="px-4 py-3.5">
-        <p className="text-[13px] font-medium text-[#1d1d1f]">{ticket.customer_name ?? "—"}</p>
-        <p className="text-[11px] text-[#6e6e73]">{ticket.phone ?? "—"}</p>
+        <p className="text-[13px] font-medium text-ink">{ticket.customer_name ?? "—"}</p>
+        <p className="text-[11px] text-mute">{ticket.phone ?? "—"}</p>
       </td>
       <td className="px-4 py-3.5 hidden lg:table-cell">
-        <p className="text-[13px] text-[#1d1d1f] truncate max-w-[180px]">{ticket.issue_type ?? "—"}</p>
-        <p className="text-[11px] text-[#6e6e73] truncate max-w-[180px]">{ticket.issue_description ?? ""}</p>
+        <p className="text-[13px] text-ink truncate max-w-[180px]">{ticket.issue_type ?? "—"}</p>
+        <p className="text-[11px] text-mute truncate max-w-[180px]">{ticket.issue_description ?? ""}</p>
       </td>
       <td className="px-4 py-3.5">
         <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", S.bg, S.color)}>{S.label}</span>
       </td>
       <td className="px-4 py-3.5 hidden sm:table-cell">
-        {CS ? <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>{CS.label}</span> : <span className="text-[12px] text-[#c7c7cc]">—</span>}
+        {CS ? <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>{CS.label}</span> : <span className="text-[12px] text-faint">—</span>}
       </td>
       <td className="px-4 py-3.5 hidden md:table-cell">
-        <span className="text-[12px] text-[#6e6e73]">{ticket.order_date ? new Date(ticket.order_date).toLocaleDateString("en-IN") : "—"}</span>
+        <span className="text-[12px] text-mute">{ticket.order_date ? new Date(ticket.order_date).toLocaleDateString("en-IN") : "—"}</span>
       </td>
     </tr>
   )
@@ -473,41 +580,42 @@ const SAMPLE_REVIEW: Review = {
   status: "pending",
   whatsapp_status: "delivered",
   call_status: "COMPLETED",
-  run_id: "run_review_001",
+  run_id: "425",
 }
 
 const SENTIMENT_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  positive: { label: "Positive", color: "text-[#1a7a32]", bg: "bg-[#34c759]/10" },
-  neutral:  { label: "Neutral",  color: "text-[#8a5900]", bg: "bg-[#ff9500]/10" },
-  negative: { label: "Negative", color: "text-[#cc0000]", bg: "bg-[#ff3b30]/10" },
+  positive: { label: "Positive", color: "text-successtext", bg: "bg-success/10" },
+  neutral:  { label: "Neutral",  color: "text-warntext", bg: "bg-warn/10" },
+  negative: { label: "Negative", color: "text-dangertext", bg: "bg-danger/10" },
 }
 
 function ReviewDetailPanel({ review, onClose }: { review: Review; onClose: () => void }) {
+  const [expandedRun, setExpandedRun] = useState(false)
   const sent = SENTIMENT_MAP[(review.sentiment ?? "").toLowerCase()]
-  const CS = review.call_status ? (CALL_STATUS_MAP[review.call_status] ?? { label: review.call_status, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" }) : null
+  const CS = review.call_status ? (CALL_STATUS_MAP[review.call_status] ?? { label: review.call_status, color: "text-mute", bg: "bg-surface" }) : null
   return (
-    <div className="bg-white rounded-2xl hairline overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06]">
+    <div className="bg-card rounded-2xl hairline overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-ink/[0.06]">
         <div>
-          <p className="text-[15px] font-semibold text-[#1d1d1f]">{review.customer_name ?? "Unknown"}</p>
-          <p className="text-[12px] text-[#6e6e73]">Review #{review.id} · {review.order_date ? new Date(review.order_date).toLocaleDateString("en-IN") : "—"}</p>
+          <p className="text-[15px] font-semibold text-ink">{review.customer_name ?? "Unknown"}</p>
+          <p className="text-[12px] text-mute">Review #{review.id} · {review.order_date ? new Date(review.order_date).toLocaleDateString("en-IN") : "—"}</p>
         </div>
         <div className="flex items-center gap-2">
           {sent && <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", sent.bg, sent.color)}>{sent.label}</span>}
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#f5f5f7] text-[#6e6e73]"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface text-mute"><X className="w-4 h-4" /></button>
         </div>
       </div>
       <div className="overflow-y-auto px-5 py-4 space-y-4 max-h-[70vh]">
         <Section label="Rating">
-          <div className="flex items-center gap-3 bg-[#f5f5f7] rounded-xl px-4 py-3">
+          <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3">
             <StarRating rating={review.rating} />
-            <span className="text-[15px] font-semibold text-[#1d1d1f]">{review.rating ?? "—"}/5</span>
+            <span className="text-[15px] font-semibold text-ink">{review.rating ?? "—"}/5</span>
           </div>
         </Section>
         {review.review_text && (
           <Section label="Review">
-            <div className="bg-[#f5f5f7] rounded-xl px-3.5 py-3">
-              <p className="text-[13px] text-[#1d1d1f] leading-relaxed">{review.review_text}</p>
+            <div className="bg-surface rounded-xl px-3.5 py-3">
+              <p className="text-[13px] text-ink leading-relaxed">{review.review_text}</p>
             </div>
           </Section>
         )}
@@ -523,15 +631,25 @@ function ReviewDetailPanel({ review, onClose }: { review: Review; onClose: () =>
           <Grid2 items={[
             ["WA Status", review.whatsapp_status ?? "—"],
             ["Call Status", CS?.label ?? "—"],
-            ["Run ID", review.run_id ?? "—"],
           ]} mono />
         </Section>
+        {review.run_id && (
+          <Section label="Workflow Run">
+            <button
+              onClick={() => setExpandedRun(v => !v)}
+              className="flex items-center gap-2 w-full bg-surface hover:bg-hair2 rounded-xl px-3.5 py-2.5 transition-colors text-left"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5 text-info shrink-0" />
+              <code className="text-[12px] font-mono text-info flex-1 truncate">{review.run_id}</code>
+              <ChevronRight className={cn("w-3.5 h-3.5 text-mute shrink-0 transition-transform", expandedRun && "rotate-90")} />
+            </button>
+            {expandedRun && <RunMiniPanel runId={review.run_id} onClose={() => setExpandedRun(false)} />}
+          </Section>
+        )}
       </div>
-      <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
+      <div className="px-5 py-4 border-t border-ink/[0.06] flex flex-wrap gap-2">
         {review.recording_url && <a href={review.recording_url} target="_blank" rel="noreferrer" className="action-link-blue"><PhoneCall className="w-3.5 h-3.5" /> Recording</a>}
         {review.transcript_url && <a href={review.transcript_url} target="_blank" rel="noreferrer" className="action-link-gray"><ExternalLink className="w-3.5 h-3.5" /> Transcript</a>}
-        <button className="action-btn-green"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
-        <button className="action-btn-blue"><PhoneCall className="w-3.5 h-3.5" /> Call</button>
       </div>
     </div>
   )
@@ -541,25 +659,25 @@ function ReviewRow({ review, selected, onSelect }: { review: Review; selected: b
   const sent = SENTIMENT_MAP[(review.sentiment ?? "").toLowerCase()]
   const CS = review.call_status ? (CALL_STATUS_MAP[review.call_status] ?? null) : null
   return (
-    <tr className={cn("border-b border-black/[0.04] hover:bg-[#f5f5f7] transition-colors cursor-pointer", selected && "bg-[#0066cc]/5")} onClick={onSelect}>
+    <tr className={cn("border-b border-ink/[0.04] hover:bg-surface transition-colors cursor-pointer", selected && "bg-info/5")} onClick={onSelect}>
       <td className="px-4 py-3.5">
-        <p className="text-[13px] font-medium text-[#1d1d1f]">{review.customer_name ?? "—"}</p>
-        <p className="text-[11px] text-[#6e6e73]">{review.phone ?? "—"}</p>
+        <p className="text-[13px] font-medium text-ink">{review.customer_name ?? "—"}</p>
+        <p className="text-[11px] text-mute">{review.phone ?? "—"}</p>
       </td>
       <td className="px-4 py-3.5">
         <StarRating rating={review.rating} />
       </td>
       <td className="px-4 py-3.5 hidden lg:table-cell">
-        <p className="text-[13px] text-[#1d1d1f] truncate max-w-[160px]">{review.product_name ?? "—"}</p>
+        <p className="text-[13px] text-ink truncate max-w-[160px]">{review.product_name ?? "—"}</p>
       </td>
       <td className="px-4 py-3.5 hidden sm:table-cell">
-        {sent ? <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", sent.bg, sent.color)}>{sent.label}</span> : <span className="text-[12px] text-[#c7c7cc]">—</span>}
+        {sent ? <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", sent.bg, sent.color)}>{sent.label}</span> : <span className="text-[12px] text-faint">—</span>}
       </td>
       <td className="px-4 py-3.5 hidden md:table-cell">
-        {CS ? <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>{CS.label}</span> : <span className="text-[12px] text-[#c7c7cc]">—</span>}
+        {CS ? <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full", CS.bg, CS.color)}>{CS.label}</span> : <span className="text-[12px] text-faint">—</span>}
       </td>
       <td className="px-4 py-3.5 hidden md:table-cell">
-        <span className="text-[12px] text-[#6e6e73]">{review.order_date ? new Date(review.order_date).toLocaleDateString("en-IN") : "—"}</span>
+        <span className="text-[12px] text-mute">{review.order_date ? new Date(review.order_date).toLocaleDateString("en-IN") : "—"}</span>
       </td>
     </tr>
   )
@@ -570,7 +688,7 @@ function ReviewRow({ review, selected, onSelect }: { review: Review; selected: b
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider mb-2">{label}</p>
+      <p className="text-[11px] font-semibold text-mute uppercase tracking-wider mb-2">{label}</p>
       {children}
     </div>
   )
@@ -580,16 +698,16 @@ function Grid2({ items, mono }: { items: [string, string][]; mono?: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-2">
       {items.map(([k, v]) => (
-        <div key={k} className="bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
-          <p className="text-[11px] text-[#6e6e73]">{k}</p>
-          <p className={cn("text-[13px] font-medium text-[#1d1d1f] truncate", mono && "font-mono")}>{v}</p>
+        <div key={k} className="bg-surface rounded-xl px-3.5 py-2.5">
+          <p className="text-[11px] text-mute">{k}</p>
+          <p className={cn("text-[13px] font-medium text-ink truncate", mono && "font-mono")}>{v}</p>
         </div>
       ))}
     </div>
   )
 }
 
-// ─── Main Tab ────────────────────────────────────────────────────────────────
+// ─── Main Tab ────────────────────────────────────���───────────────────────────
 
 type ShopifySubTab = "cod" | "cart" | "support" | "reviews"
 
@@ -605,14 +723,26 @@ export function ShopifyTab() {
   const [subTab, setSubTab] = useState<ShopifySubTab>("cod")
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
+  const [codStatusFilter, setCodStatusFilter] = useState("all")
+  const [cartStatusFilter, setCartStatusFilter] = useState("all")
 
   const [selectedCod, setSelectedCod]       = useState<CodOrder | null>(null)
   const [selectedCart, setSelectedCart]     = useState<CartItem | null>(null)
   const [selectedSupport, setSelectedSupport] = useState<SupportTicket | null>(null)
   const [selectedReview, setSelectedReview]   = useState<Review | null>(null)
 
-  const { data: codData,     isLoading: codLoading }     = useSWR(subTab === "cod"     ? `/api/shopify/cod?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
-  const { data: cartData,    isLoading: cartLoading }    = useSWR(subTab === "cart"    ? `/api/shopify/cart?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
+  // COD: filter by "order confirm" column — confirmed=true, rejected=false, pending=null
+  const codStatusParam = codStatusFilter === "confirmed" ? "&order_confirm=true"
+    : codStatusFilter === "rejected"  ? "&order_confirm=false"
+    : codStatusFilter === "pending"   ? "&order_confirm=pending"
+    : ""
+  // Cart: confirmed = both COMPLETED + completed, pending = null call status
+  const cartStatusParam = cartStatusFilter === "confirmed" ? "&call_status=confirmed"
+    : cartStatusFilter === "pending" ? "&call_status=pending"
+    : ""
+
+  const { data: codData,     isLoading: codLoading }     = useSWR(subTab === "cod"     ? `/api/shopify/cod?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}${codStatusParam}` : null, fetcher, { keepPreviousData: true })
+  const { data: cartData,    isLoading: cartLoading }    = useSWR(subTab === "cart"    ? `/api/shopify/cart?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}${cartStatusParam}` : null, fetcher, { keepPreviousData: true })
   const { data: supportData, isLoading: supportLoading } = useSWR(subTab === "support" ? `/api/support?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
   const { data: reviewData,  isLoading: reviewLoading }  = useSWR(subTab === "reviews" ? `/api/reviews?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}` : null, fetcher, { keepPreviousData: true })
 
@@ -633,6 +763,7 @@ export function ShopifyTab() {
 
   function switchSubTab(id: ShopifySubTab) {
     setSubTab(id); setPage(1); setSearch("")
+    setCodStatusFilter("all"); setCartStatusFilter("all")
     setSelectedCod(null); setSelectedCart(null); setSelectedSupport(null); setSelectedReview(null)
   }
 
@@ -641,14 +772,14 @@ export function ShopifyTab() {
   return (
     <div className="space-y-4">
       {/* Sub-tab switcher */}
-      <div className="bg-white rounded-2xl hairline px-2 py-2 inline-flex gap-1 flex-wrap">
+      <div className="bg-card rounded-2xl hairline px-2 py-2 inline-flex gap-1 flex-wrap">
         {SUB_TABS.map(([id, label]) => (
           <button
             key={id}
             onClick={() => switchSubTab(id)}
             className={cn(
               "px-4 py-2 rounded-xl text-[13px] font-medium transition-all",
-              subTab === id ? "bg-[#1d1d1f] text-white shadow-sm" : "text-[#6e6e73] hover:bg-[#f5f5f7]"
+              subTab === id ? "bg-ink text-white shadow-sm" : "text-mute hover:bg-surface"
             )}
           >
             {label}
@@ -657,17 +788,63 @@ export function ShopifyTab() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white rounded-2xl hairline px-4 py-3 flex items-center gap-3">
-        <div className="flex-1 flex items-center gap-2 bg-[#f5f5f7] rounded-full px-3.5 py-2">
-          <Search className="w-4 h-4 text-[#6e6e73] shrink-0" />
+      <div className="bg-card rounded-2xl hairline px-4 py-3 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 bg-surface rounded-full px-3.5 py-2 min-w-[180px] flex-1">
+          <Search className="w-4 h-4 text-mute shrink-0" />
           <input
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
             placeholder={placeholders[subTab]}
-            className="bg-transparent text-[13px] text-[#1d1d1f] outline-none w-full placeholder:text-[#6e6e73]"
+            className="bg-transparent text-[13px] text-ink outline-none w-full placeholder:text-mute"
           />
         </div>
-        <span className="text-[12px] text-[#6e6e73] shrink-0">{total} records</span>
+
+        {/* COD status filter pills */}
+        {subTab === "cod" && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {(["all", "confirmed", "rejected", "pending"] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => { setCodStatusFilter(s); setPage(1) }}
+                className={cn(
+                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
+                  codStatusFilter === s
+                    ? s === "confirmed" ? "bg-success text-white"
+                      : s === "rejected" ? "bg-danger text-white"
+                      : s === "pending"  ? "bg-warn text-white"
+                      : "bg-ink text-white"
+                    : "bg-surface text-mute hover:bg-hair2"
+                )}
+              >
+                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Cart status filter pills */}
+        {subTab === "cart" && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {(["all", "confirmed", "pending"] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => { setCartStatusFilter(s); setPage(1) }}
+                className={cn(
+                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
+                  cartStatusFilter === s
+                    ? s === "confirmed" ? "bg-success text-white"
+                      : s === "pending"  ? "bg-warn text-white"
+                      : "bg-ink text-white"
+                    : "bg-surface text-mute hover:bg-hair2"
+                )}
+              >
+                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <span className="text-[12px] text-mute shrink-0 ml-auto">{total} records</span>
       </div>
 
       {/* Error */}
@@ -681,16 +858,16 @@ export function ShopifyTab() {
       <div className={cn(hasPanel ? "grid grid-cols-1 lg:grid-cols-5 gap-4" : "")}>
 
         {/* ── Table ── */}
-        <div className={cn("bg-white rounded-2xl hairline overflow-hidden", hasPanel ? "lg:col-span-3" : "")}>
+        <div className={cn("bg-card rounded-2xl hairline overflow-hidden", hasPanel ? "lg:col-span-3" : "")}>
           <div className="overflow-x-auto">
 
             {/* COD */}
             {subTab === "cod" && (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-black/[0.06]">
+                  <tr className="border-b border-ink/[0.06]">
                     {[{ label: "Order" }, { label: "Customer", sm: true }, { label: "Product", lg: true }, { label: "Amount" }, { label: "Status" }, { label: "Run ID", md: true }].map((h, i) => (
-                      <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider", h.sm && "hidden sm:table-cell", h.lg && "hidden lg:table-cell", h.md && "hidden md:table-cell")}>{h.label}</th>
+                      <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-mute uppercase tracking-wider", h.sm && "hidden sm:table-cell", h.lg && "hidden lg:table-cell", h.md && "hidden md:table-cell")}>{h.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -698,7 +875,7 @@ export function ShopifyTab() {
                   {isLoading ? <SkeletonRows cols={6} /> : codOrders.length === 0 ? (
                     <>
                       <CodRow order={SAMPLE_COD} selected={selectedCod?.["order id"] === SAMPLE_COD["order id"]} onSelect={() => setSelectedCod(prev => prev?.["order id"] === SAMPLE_COD["order id"] ? null : SAMPLE_COD)} />
-                      <tr><td colSpan={6} className="px-4 py-4 text-center text-[12px] text-[#c7c7cc]">Sample record — no live data found</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-4 text-center text-[12px] text-faint">Sample record — no live data found</td></tr>
                     </>
                   ) : codOrders.map(o => (
                     <CodRow key={o["order id"]} order={o} selected={selectedCod?.["order id"] === o["order id"]} onSelect={() => setSelectedCod(prev => prev?.["order id"] === o["order id"] ? null : o)} />
@@ -711,9 +888,9 @@ export function ShopifyTab() {
             {subTab === "cart" && (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-black/[0.06]">
+                  <tr className="border-b border-ink/[0.06]">
                     {[{ label: "Customer" }, { label: "Product", lg: true }, { label: "Cart Value" }, { label: "Date", sm: true }, { label: "Call Status" }].map((h, i) => (
-                      <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider", h.lg && "hidden lg:table-cell", h.sm && "hidden sm:table-cell")}>{h.label}</th>
+                      <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-mute uppercase tracking-wider", h.lg && "hidden lg:table-cell", h.sm && "hidden sm:table-cell")}>{h.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -721,7 +898,7 @@ export function ShopifyTab() {
                   {isLoading ? <SkeletonRows cols={5} /> : cartRows.length === 0 ? (
                     <>
                       <CartRow row={SAMPLE_CART} selected={selectedCart?.["checkout id"] === SAMPLE_CART["checkout id"]} onSelect={() => setSelectedCart(prev => prev?.["checkout id"] === SAMPLE_CART["checkout id"] ? null : SAMPLE_CART)} />
-                      <tr><td colSpan={5} className="px-4 py-4 text-center text-[12px] text-[#c7c7cc]">Sample record — no live data found</td></tr>
+                      <tr><td colSpan={5} className="px-4 py-4 text-center text-[12px] text-faint">Sample record — no live data found</td></tr>
                     </>
                   ) : cartRows.map((r, i) => (
                     <CartRow key={r["checkout id"] ?? i} row={r} selected={selectedCart?.["checkout id"] === r["checkout id"]} onSelect={() => setSelectedCart(prev => prev?.["checkout id"] === r["checkout id"] ? null : r)} />
@@ -734,9 +911,9 @@ export function ShopifyTab() {
             {subTab === "support" && (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-black/[0.06]">
+                  <tr className="border-b border-ink/[0.06]">
                     {[{ label: "Customer" }, { label: "Issue", lg: true }, { label: "Status" }, { label: "Call", sm: true }, { label: "Date", md: true }].map((h, i) => (
-                      <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider", h.lg && "hidden lg:table-cell", h.sm && "hidden sm:table-cell", h.md && "hidden md:table-cell")}>{h.label}</th>
+                      <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-mute uppercase tracking-wider", h.lg && "hidden lg:table-cell", h.sm && "hidden sm:table-cell", h.md && "hidden md:table-cell")}>{h.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -744,7 +921,7 @@ export function ShopifyTab() {
                   {isLoading ? <SkeletonRows cols={5} /> : supportTickets.length === 0 ? (
                     <>
                       <SupportRow ticket={SAMPLE_SUPPORT} selected={selectedSupport?.id === SAMPLE_SUPPORT.id} onSelect={() => setSelectedSupport(prev => prev?.id === SAMPLE_SUPPORT.id ? null : SAMPLE_SUPPORT)} />
-                      <tr><td colSpan={5} className="px-4 py-4 text-center text-[12px] text-[#c7c7cc]">Sample record — no live data found</td></tr>
+                      <tr><td colSpan={5} className="px-4 py-4 text-center text-[12px] text-faint">Sample record — no live data found</td></tr>
                     </>
                   ) : supportTickets.map(t => (
                     <SupportRow key={t.id} ticket={t} selected={selectedSupport?.id === t.id} onSelect={() => setSelectedSupport(prev => prev?.id === t.id ? null : t)} />
@@ -757,9 +934,9 @@ export function ShopifyTab() {
             {subTab === "reviews" && (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-black/[0.06]">
+                  <tr className="border-b border-ink/[0.06]">
                     {[{ label: "Customer" }, { label: "Rating" }, { label: "Product", lg: true }, { label: "Sentiment", sm: true }, { label: "Call", md: true }, { label: "Date", md: true }].map((h, i) => (
-                      <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wider", h.lg && "hidden lg:table-cell", h.sm && "hidden sm:table-cell", h.md && "hidden md:table-cell")}>{h.label}</th>
+                      <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold text-mute uppercase tracking-wider", h.lg && "hidden lg:table-cell", h.sm && "hidden sm:table-cell", h.md && "hidden md:table-cell")}>{h.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -767,7 +944,7 @@ export function ShopifyTab() {
                   {isLoading ? <SkeletonRows cols={6} /> : reviews.length === 0 ? (
                     <>
                       <ReviewRow review={SAMPLE_REVIEW} selected={selectedReview?.id === SAMPLE_REVIEW.id} onSelect={() => setSelectedReview(prev => prev?.id === SAMPLE_REVIEW.id ? null : SAMPLE_REVIEW)} />
-                      <tr><td colSpan={6} className="px-4 py-4 text-center text-[12px] text-[#c7c7cc]">Sample record — no live data found</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-4 text-center text-[12px] text-faint">Sample record — no live data found</td></tr>
                     </>
                   ) : reviews.map(r => (
                     <ReviewRow key={r.id} review={r} selected={selectedReview?.id === r.id} onSelect={() => setSelectedReview(prev => prev?.id === r.id ? null : r)} />
@@ -779,16 +956,16 @@ export function ShopifyTab() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-black/[0.04]">
-            <p className="text-[12px] text-[#6e6e73]">{total} total</p>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-ink/[0.04]">
+            <p className="text-[12px] text-mute">{total} total</p>
             <div className="flex items-center gap-2">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0] disabled:opacity-40 transition-colors">Prev</button>
-              <span className="text-[12px] font-semibold text-[#0066cc] w-7 h-7 rounded-full bg-[#0066cc]/10 flex items-center justify-center">{page}</span>
+                className="text-[12px] font-medium px-3 py-1.5 rounded-full bg-surface text-mute hover:bg-hair2 disabled:opacity-40 transition-colors">Prev</button>
+              <span className="text-[12px] font-semibold text-info w-7 h-7 rounded-full bg-info/10 flex items-center justify-center">{page}</span>
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={(subTab === "cod" ? codOrders : subTab === "cart" ? cartRows : subTab === "support" ? supportTickets : reviews).length < 20}
-                className="text-[12px] font-medium px-3 py-1.5 rounded-full bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0] disabled:opacity-40 transition-colors">Next</button>
+                className="text-[12px] font-medium px-3 py-1.5 rounded-full bg-surface text-mute hover:bg-hair2 disabled:opacity-40 transition-colors">Next</button>
             </div>
           </div>
         </div>
@@ -812,7 +989,7 @@ function SkeletonRows({ cols }: { cols: number }) {
   return (
     <>
       {[...Array(5)].map((_, i) => (
-        <tr key={i} className="border-b border-black/[0.04]">
+        <tr key={i} className="border-b border-ink/[0.04]">
           {[...Array(cols)].map((_, j) => (
             <td key={j} className="px-4 py-3.5"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
           ))}
