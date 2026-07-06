@@ -309,8 +309,19 @@ export function WhatsAppTab() {
                 <div className="flex items-center justify-center py-8">
                   <div className="w-6 h-6 border-2 border-[#0066cc] border-t-transparent rounded-full animate-spin" />
                 </div>
+              ) : messagesData?.error ? (
+                <div className="flex items-center justify-center py-8 px-4 text-center">
+                  <div>
+                    <AlertCircle className="w-6 h-6 text-red-400 mx-auto mb-2" />
+                    <p className="text-[13px] text-red-600">{messagesData.error}</p>
+                    <p className="text-[11px] text-[#6e6e73] mt-1">Phone: {selectedPhone}</p>
+                  </div>
+                </div>
               ) : messages.length === 0 ? (
-                <div className="text-center py-8 text-[13px] text-[#6e6e73]">No messages yet</div>
+                <div className="text-center py-8 text-[13px] text-[#6e6e73]">
+                  No messages yet
+                  {selectedPhone && <p className="text-[11px] text-[#6e6e73] mt-1">Phone: {selectedPhone}</p>}
+                </div>
               ) : messages.map((msg, i) => {
                 // BotSailor: sender is "subscriber" (customer) or "bot"/"agent"
                 const rawMsg = msg as Record<string, unknown>

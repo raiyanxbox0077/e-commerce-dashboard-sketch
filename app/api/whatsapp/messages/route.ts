@@ -34,6 +34,15 @@ export async function GET(req: Request) {
 
   const res = await fetch(`${BOTSAILOR_BASE}/whatsapp/get/conversation?${params}`)
   const data = await res.json()
+
+  // BotSailor returns 200 even on error — check status field
+  if (data?.status !== undefined && String(data.status) !== '1') {
+    return NextResponse.json(
+      { error: data?.message ?? 'Failed to load messages. Check Phone Number ID in Profile > Integrations.' },
+      { status: 400 }
+    )
+  }
+
   return NextResponse.json(data, { status: res.status })
 }
 
