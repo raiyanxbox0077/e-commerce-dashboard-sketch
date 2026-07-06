@@ -77,18 +77,42 @@ export async function GET() {
     }
   } catch (_) { /* table not found — skip */ }
 
-  // ── Call stats ─────────────────────────────────────────────────────────────
-  // Pulled from Dograh API via /api/calls — we store zeros here and
-  // let the frontend aggregate from the calls list when it loads.
-  // But we CAN derive call cost savings from calls data if stored locally.
-  // For now, use a reasonable heuristic: each completed call = ₹50 saved vs manual agent.
-  // This will be replaced by actual call data when calls tab is loaded.
+  // ── Call stats — fetched live from Dograh ─────────────────────────────────
   const callStats = { total: 0, completed: 0, failed: 0, no_answer: 0, in_progress: 0 }
 
+  try {
+    const apiKey  = tenant?.voice_api_key
+    const baseUrl = (tenant?.voice_base_url || 'https://voice.larynxai.in').replace(/\/$/, '')
+    const wfIds: string[] = Array.isArray(tenant?.voice_workflow_id)
+      ? tenant.voice_workflow_id
+      : tenant?.voice_workflow_id ? [String(tenant.voice_workflow_id)] : []
+
+    if (apiKey) {
+      const res = await fetch(`${baseUrl}/api/v1/organizations/usage/runs?page=1&limit=100`, {
+        headers: { 'X-API-Key': apiKey },
+      })
+      if (res.ok) {
+        const raw = await res.json()
+        const allRuns: Record<string, unknown>[] = Array.isArray(raw) ? raw : (raw?.runs ?? [])
+        // Filter to this tenant's workflows only
+        const runs = wfIds.length ? allRuns.filter(r => wfIds.includes(String(r.workflow_id))) : allRuns
+
+        callStats.total = runs.length
+        for (const r of runs) {
+          const d = String(r.disposition ?? '')
+          if (d === 'end_call_tool' || d === 'user_hangup')       callStats.completed++
+          else if (d === 'user_idle_max_duration_exceeded')        callStats.no_answer++
+          else if (!d || d === 'null')                             callStats.in_progress++
+          else                                                     callStats.failed++
+        }
+      }
+    }
+  } catch (_) { /* Dograh unavailable — use zero counts */ }
+
   // ── Revenue aggregates ─────────────────────────────────────────────────────
-  // Call cost savings: estimated ₹50/completed call (human agent cost avoided)
+  // Call cost savings: ₹50 per completed call (human agent cost avoided)
   const callCostSavings = callStats.completed * 50
-  const totalNetImpact = revenueMade + revenueSaved + callCostSavings
+  const totalNetImpact  = revenueMade + revenueSaved + callCostSavings
 
   return NextResponse.json({
     wallet_balance: walletBalance,
