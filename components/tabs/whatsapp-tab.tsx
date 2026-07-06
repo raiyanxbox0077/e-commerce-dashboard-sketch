@@ -328,16 +328,9 @@ export function WhatsAppTab() {
                 const rawMsg = msg as Record<string, unknown>
                 // BotSailor: sender="user" means the customer, "bot"/"agent" means outbound
                 const isUser = rawMsg.sender === "user" || rawMsg.sender === "subscriber" || msg.sender_type === "user" || msg.sender_type === "subscriber" || msg.direction === "incoming"
-                // message_content is a JSON string in BotSailor conversations
-                let text = msg.message ?? msg.text ?? ""
-                if (!text && rawMsg.message_content) {
-                  try {
-                    const mc = JSON.parse(rawMsg.message_content as string)
-                    text = mc?.text?.body ?? mc?.body ?? mc?.interactive?.body?.text ?? JSON.stringify(mc)
-                  } catch {
-                    text = String(rawMsg.message_content)
-                  }
-                }
+                // Route already extracts plain text into msg.message — just use it directly
+                const raw = msg.message ?? msg.text ?? ""
+                const text = typeof raw === "string" ? raw : typeof raw === "object" && raw !== null ? JSON.stringify(raw) : String(raw ?? "")
                 const rawTime = (rawMsg.conversation_time as string | undefined) ?? msg.created_at
                 const time = rawTime ? new Date(rawTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : (msg.time ?? "")
                 return (

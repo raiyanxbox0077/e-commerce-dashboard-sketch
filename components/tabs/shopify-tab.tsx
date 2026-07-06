@@ -217,10 +217,8 @@ export function ShopifyTab() {
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
 
-  const needsConfig = !tenant?.client_supabase_url
-
   const { data: codData, isLoading: codLoading } = useSWR(
-    subTab === "cod" && !needsConfig
+    subTab === "cod"
       ? `/api/shopify/cod?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}`
       : null,
     fetcher,
@@ -228,7 +226,7 @@ export function ShopifyTab() {
   )
 
   const { data: cartData, isLoading: cartLoading } = useSWR(
-    subTab === "cart" && !needsConfig
+    subTab === "cart"
       ? `/api/shopify/cart?page=${page}&limit=20${search ? `&search=${encodeURIComponent(search)}` : ""}`
       : null,
     fetcher,
@@ -239,19 +237,6 @@ export function ShopifyTab() {
   const cartRows: CartItem[] = cartData?.data ?? []
   const isLoading = subTab === "cod" ? codLoading : cartLoading
   const total = subTab === "cod" ? (codData?.count ?? 0) : (cartData?.count ?? 0)
-
-  if (needsConfig) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="w-14 h-14 bg-[#f5f5f7] rounded-2xl flex items-center justify-center mb-4 border border-[rgba(0,0,0,0.08)]">
-          <ShoppingBag className="w-6 h-6 text-[#c7c7cc]" />
-        </div>
-        <h3 className="text-[15px] font-semibold text-[#1d1d1f]">Client database not configured</h3>
-        <p className="text-[13px] text-[#6e6e73] mt-1 max-w-xs">
-          Add your client Supabase URL and anon key in Profile &rarr; Integrations.
-        </p>
-      </div>
-    )
   }
 
   return (
