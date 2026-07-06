@@ -26,6 +26,7 @@ export async function POST(req: Request) {
 
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = payload
 
+  // Verify Razorpay signature
   const hmacInput = `${razorpay_order_id}|${razorpay_payment_id}`
   const expectedSignature = crypto
     .createHmac('sha256', keySecret)
@@ -38,28 +39,28 @@ export async function POST(req: Request) {
 
   const amountInRupees = (amount ?? 0) / 100
 
-  const { error: txError } = await supabase.from('wallet_transactions').insert({
-    user_id: user.id,
-    type: 'credit',
-    amount: amountInRupees,
-    description: 'Wallet recharge via Razorpay',
-    razorpay_payment_id,
-    razorpay_order_id,
-    status: 'completed',
-  })
-  if (txError) return NextResponse.json({ error: txError.message }, { status: 500 })
-
-  const { data: tenant } = await supabase
+  // Read current balance
+  const { data: tenant, error: readError } = await supabase
     .from('tenants')
     .select('wallet_balance')
     .eq('user_id', user.id)
     .single()
 
-  const newBalance = (tenant?.wallet_balance ?? 0) + amountInRupees
-  await supabase
+  if (readError) {
+    return NextResponse.json({ error: `Failed to read wallet: ${readError.message}` }, { status: 500 })
+  }
+
+  const newBalance = Number(tenant?.wallet_balance ?? 0) + amountInRupees
+
+  // Write new balance
+  const { error: updateError } = await supabase
     .from('tenants')
     .update({ wallet_balance: newBalance, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)
+
+  if (updateError) {
+    return NextResponse.json({ error: `Failed to update wallet: ${updateError.message}` }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true, new_balance: newBalance })
 }
