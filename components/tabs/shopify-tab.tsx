@@ -237,7 +237,6 @@ export function ShopifyTab() {
   const cartRows: CartItem[] = cartData?.data ?? []
   const isLoading = subTab === "cod" ? codLoading : cartLoading
   const total = subTab === "cod" ? (codData?.count ?? 0) : (cartData?.count ?? 0)
-  }
 
   return (
     <div className="space-y-4">
