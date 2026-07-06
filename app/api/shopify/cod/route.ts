@@ -31,10 +31,10 @@ export async function GET(req: Request) {
     let q = supabase
       .from(tableName)
       .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .order('order_date', { ascending: false })
       .range((page - 1) * limit, page * limit - 1)
     if (search) q = q.ilike('customer_name', `%${search}%`)
-    if (status) q = q.eq('cod_status', status)
+    if (status) q = q.eq('status', status)
     const result = await q
     if (!result.error) {
       data = result.data; count = result.count; error = null; break

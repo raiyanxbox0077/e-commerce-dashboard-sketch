@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   let query = supabase
     .from(cartTable)
     .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order('order_date', { ascending: false })
     .range((page - 1) * limit, page * limit - 1)
 
   if (search) query = query.ilike('customer_name', `%${search}%`)
