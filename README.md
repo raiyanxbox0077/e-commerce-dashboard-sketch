@@ -27,6 +27,8 @@ For AI-assisted development, read these files first:
 | `DESIGN_SYSTEM.md` | Design tokens, component patterns, CSS utilities |
 | `DATABASE.md` | Supabase schema, RLS, tenant model |
 | `INTEGRATIONS.md` | Dograh voice API, BotSailor WhatsApp, Shopify, Razorpay |
+| `DEVELOPMENT.md` | Setup, conventions, gotchas |
+| `DEPLOY.md` | Self-host on Hetzner VPS (copy-paste guide, port 3721) |
 
 ## Tech Stack
 

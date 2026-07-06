@@ -40,6 +40,7 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
   const [method, setMethod] = useState("upi")
   const [recharging, setRecharging] = useState(false)
   const [recharged, setRecharged] = useState(false)
+  const [rechargeError, setRechargeError] = useState<string | null>(null)
 
   const finalAmount = amount ?? (customAmount ? parseFloat(customAmount) : 0)
   const balance = data?.balance ?? 0
@@ -59,20 +60,22 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
   async function handleRecharge() {
     if (finalAmount < 10 || recharging) return
     setRecharging(true)
+    setRechargeError(null)
     try {
       const loaded = await loadRazorpay()
-      if (!loaded) throw new Error("Razorpay failed to load")
+      if (!loaded) throw new Error("Razorpay script failed to load. Check your internet connection.")
 
       const res = await fetch("/api/wallet/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: finalAmount }),
       })
-      const order = await res.json()
-      if (order.error) throw new Error(order.error)
+      // Always parse JSON — even error responses include a body now
+      const order = await res.json().catch(() => ({ error: `Server error (${res.status})` }))
+      if (!res.ok || order.error) throw new Error(order.error || `Unexpected error (${res.status})`)
 
       const rzp = new window.Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: order.key_id,
         amount: order.amount,
         currency: order.currency,
         name: "AI Dashboard",
@@ -101,7 +104,7 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
       })
       rzp.open()
     } catch (e) {
-      console.error(e)
+      setRechargeError(e instanceof Error ? e.message : "Something went wrong")
     } finally {
       setRecharging(false)
     }
@@ -198,6 +201,13 @@ export function WalletTab({ onTabChange }: { onTabChange?: (tab: string) => void
               ))}
             </div>
           </div>
+
+          {rechargeError && (
+            <div className="flex items-start gap-2 bg-[#fff3f3] border border-[#ffcdd2] rounded-xl px-3.5 py-3 text-[13px] text-[#cc0000]">
+              <span className="shrink-0 mt-0.5">&#9888;</span>
+              <span>{rechargeError}</span>
+            </div>
+          )}
 
           <button
             onClick={handleRecharge}

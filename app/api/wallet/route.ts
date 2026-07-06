@@ -6,20 +6,19 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: transactions, error } = await supabase
-    .from('wallet_transactions')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(50)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const { data: tenant } = await supabase
+  // Transactions stored as JSONB array on tenants.wallet_transactions
+  const { data: tenant, error } = await supabase
     .from('tenants')
-    .select('wallet_balance')
+    .select('wallet_balance, wallet_transactions')
     .eq('user_id', user.id)
     .single()
 
-  return NextResponse.json({ balance: tenant?.wallet_balance ?? 0, transactions })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const transactions = Array.isArray(tenant?.wallet_transactions) ? tenant.wallet_transactions : []
+
+  return NextResponse.json({
+    balance: Number(tenant?.wallet_balance ?? 0),
+    transactions,
+  })
 }
