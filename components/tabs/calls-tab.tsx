@@ -449,12 +449,11 @@ export function CallsTab() {
   const { tenant } = useTenant()
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
-  const [filterType, setFilterType] = useState("all")
   const [page, setPage] = useState(1)
   const [selectedRun, setSelectedRun] = useState<Run | null>(null)
 
-  // Fetch runs — API already fans out across all saved workflow IDs automatically
-  const queryParams = `?page=${page}&limit=20${filterStatus !== "all" ? `&status=${filterStatus}` : ""}${filterType !== "all" ? `&type=${filterType}` : ""}`
+  // Fetch runs — status filter maps disposition → completed | no_answer | in_progress
+  const queryParams = `?page=${page}&limit=20${filterStatus !== "all" ? `&status=${filterStatus}` : ""}`
   const { data, isLoading } = useSWR(
     tenant?.voice_api_key ? `/api/calls${queryParams}` : null,
     fetcher
@@ -507,40 +506,28 @@ export function CallsTab() {
             />
           </div>
 
-          {/* Type filter — COD / Cart */}
-          <div className="flex items-center gap-1">
-            {(["all", "cod", "cart"] as const).map(t => (
+          {/* Status filter — based on Dograh disposition mapping */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {([
+              { value: "all",         label: "All" },
+              { value: "completed",   label: "Completed" },
+              { value: "in_progress", label: "Busy / Live" },
+              { value: "no_answer",   label: "No Answer" },
+            ] as const).map(({ value, label }) => (
               <button
-                key={t}
-                onClick={() => { setFilterType(t); setPage(1) }}
+                key={value}
+                onClick={() => { setFilterStatus(value); setPage(1) }}
                 className={cn(
-                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors uppercase tracking-wide",
-                  filterType === t
-                    ? t === "cod"  ? "bg-[#34c759] text-white"
-                      : t === "cart" ? "bg-[#af52de] text-white"
+                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors",
+                  filterStatus === value
+                    ? value === "completed"   ? "bg-[#34c759] text-white"
+                      : value === "in_progress" ? "bg-[#0066cc] text-white"
+                      : value === "no_answer"   ? "bg-[#ff9500] text-white"
                       : "bg-[#1d1d1f] text-white"
                     : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
                 )}
               >
-                {t === "all" ? "All Types" : t.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {/* Status filter pills */}
-          <div className="flex items-center gap-1 flex-wrap">
-            {(["all", "completed", "failed", "no_answer"] as const).map(s => (
-              <button
-                key={s}
-                onClick={() => { setFilterStatus(s); setPage(1) }}
-                className={cn(
-                  "text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors capitalize",
-                  filterStatus === s
-                    ? "bg-[#0066cc] text-white"
-                    : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#ebebf0]"
-                )}
-              >
-                {s === "all" ? "All Status" : s.replace("_", " ")}
+                {label}
               </button>
             ))}
           </div>

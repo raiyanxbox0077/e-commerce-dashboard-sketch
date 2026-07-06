@@ -289,6 +289,7 @@ interface CartItem {
   abandoned_checkout_url?: string
   "call status"?: string
   "WhatsApp Status"?: string
+  RUN_ID?: string | null
 }
 
 const SAMPLE_CART: CartItem = {
@@ -314,6 +315,7 @@ const SAMPLE_CART: CartItem = {
 }
 
 function CartDetailPanel({ row, onClose }: { row: CartItem; onClose: () => void }) {
+  const [expandedRun, setExpandedRun] = useState(false)
   const callSt = row["call status"] ?? ""
   const CS = CALL_STATUS_MAP[callSt] ?? (callSt ? { label: callSt, color: "text-[#6e6e73]", bg: "bg-[#f5f5f7]" } : null)
   return (
@@ -349,6 +351,19 @@ function CartDetailPanel({ row, onClose }: { row: CartItem; onClose: () => void 
         <Section label="WhatsApp">
           <Grid2 items={[["Status", row["WhatsApp Status"] ?? "—"]]} />
         </Section>
+        {row.RUN_ID && (
+          <Section label="Workflow Run">
+            <button
+              onClick={() => setExpandedRun(v => !v)}
+              className="flex items-center gap-2 w-full bg-[#f5f5f7] hover:bg-[#ebebf0] rounded-xl px-3.5 py-2.5 transition-colors text-left"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5 text-[#0066cc] shrink-0" />
+              <code className="text-[12px] font-mono text-[#0066cc] flex-1 truncate">{row.RUN_ID}</code>
+              <ChevronRight className={cn("w-3.5 h-3.5 text-[#6e6e73] shrink-0 transition-transform", expandedRun && "rotate-90")} />
+            </button>
+            {expandedRun && <RunMiniPanel runId={row.RUN_ID} onClose={() => setExpandedRun(false)} />}
+          </Section>
+        )}
       </div>
       <div className="px-5 py-4 border-t border-black/[0.06] flex flex-wrap gap-2">
         {row.abandoned_checkout_url && (
@@ -658,7 +673,7 @@ function Grid2({ items, mono }: { items: [string, string][]; mono?: boolean }) {
   )
 }
 
-// ─── Main Tab ────────────────────────────────────────────────────────────────
+// ─── Main Tab ────────────────────────────────────���───────────────────────────
 
 type ShopifySubTab = "cod" | "cart" | "support" | "reviews"
 

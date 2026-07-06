@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 async function getTenantVoiceConfig(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
@@ -39,21 +39,15 @@ export async function GET(req: Request) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const limitPerPage = parseInt(searchParams.get('limit') ?? '20')
   const statusFilter = searchParams.get('status') ?? ''
-  const typeFilter   = searchParams.get('type') ?? '' // 'cod' | 'cart' | ''
 
-  // For COD/Cart type filters — fetch known RUN_IDs from Supabase tables
-  let typeRunIds: Set<string> | null = null
-  if (typeFilter === 'cod' || typeFilter === 'cart') {
-    try {
-      const { data: tenant } = await (await createClient())
-        .from('tenants').select('cod_table_name, cart_table_name').eq('user_id', user.id).single()
-      const admin = createAdminClient()
-      const tableName = typeFilter === 'cod'
-        ? (tenant?.cod_table_name || 'E-commerce COD confimation')
-        : (tenant?.cart_table_name || 'E-commerce add to cart')
-      const { data: rows } = await admin.from(tableName).select('RUN_ID').not('RUN_ID', 'is', null)
-      typeRunIds = new Set((rows ?? []).map((r: Record<string, unknown>) => String(r.RUN_ID)).filter(Boolean))
-    } catch (_) { typeRunIds = new Set() }
+  // Map Dograh disposition values to a normalised status
+  // dispositions: 'end_call_tool' | 'user_hangup' | 'user_idle_max_duration_exceeded' | null
+  function dispositionToStatus(disposition: unknown, mode?: unknown): string {
+    const d = String(disposition ?? '')
+    if (!d || d === 'null') return 'in_progress'
+    if (d === 'user_idle_max_duration_exceeded') return 'no_answer'
+    if (d === 'end_call_tool' || d === 'user_hangup') return 'completed'
+    return 'completed'
   }
 
   const safeBase = 'https://voice.larynxai.in'
@@ -69,15 +63,17 @@ export async function GET(req: Request) {
   }
 
   function normaliseRun(r: Record<string, unknown>) {
+    const status = dispositionToStatus(r.disposition, r.mode)
     return {
       run_id:            String(r.id ?? r.run_id ?? ''),
       workflow_id:       r.workflow_id,
       agent_name:        r.workflow_name ?? '—',
       contact_name:      r.name ?? '—',
-      phone_number:      r.phone_number ?? null,
-      status:            r.status ?? 'completed',
+      phone_number:      r.phone_number ?? r.called_number ?? null,
+      status,
+      disposition:       String(r.disposition ?? ''),
       duration:          Number(r.call_duration_seconds ?? r.duration ?? 0),
-      cost:              Number(r.dograh_token_usage ?? r.cost ?? 0),
+      cost:              Number(r.charge_usd ?? r.dograh_token_usage ?? r.cost ?? 0),
       created_at:        r.created_at ?? null,
       recording_url:     abs(r.recording_public_url ?? r.recording_url),
       transcript_url:    abs(r.transcript_public_url ?? r.transcript_url),
@@ -85,8 +81,7 @@ export async function GET(req: Request) {
     }
   }
 
-  // The Dograh API ignores the `filters` param — it returns all org runs regardless.
-  // Strategy: fetch all runs (API max is 100), then filter client-side by the saved workflow IDs.
+  // Fetch all runs (API max is 100), then filter client-side by saved workflow IDs
   const fetchLimit = 100
   const res = await fetch(
     `${baseUrl}/api/v1/organizations/usage/runs?page=1&limit=${fetchLimit}`,
@@ -104,15 +99,10 @@ export async function GET(req: Request) {
   // Filter to only runs belonging to the configured workflow IDs
   const filtered = allRuns.filter(r => workflowIds.includes(String(r.workflow_id)))
 
-  // Apply COD/Cart type filter — match run_id against known RUN_IDs in Supabase tables
-  const afterType = typeRunIds !== null
-    ? filtered.filter(r => typeRunIds!.has(String(r.id ?? r.run_id ?? '')))
-    : filtered
-
-  // Apply status filter if provided
+  // Apply status filter using derived status (disposition → status mapping)
   const afterStatus = statusFilter
-    ? afterType.filter(r => String(r.status) === statusFilter)
-    : afterType
+    ? filtered.filter(r => dispositionToStatus(r.disposition, r.mode) === statusFilter)
+    : filtered
 
   // Sort by created_at desc (API returns newest first already, but re-sort after filtering)
   afterStatus.sort((a, b) => {

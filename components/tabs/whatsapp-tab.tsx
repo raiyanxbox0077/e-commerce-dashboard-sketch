@@ -68,6 +68,8 @@ export function WhatsAppTab() {
   const [chatPage, setChatPage] = useState(1)
   const [allChats, setAllChats] = useState<BotSailorChat[]>([])
   const [hasMoreChats, setHasMoreChats] = useState(true)
+  // Bump this to force SWR to re-fetch page 1 after a tab switch (avoids stale-cache no-fire)
+  const [chatFetchKey, setChatFetchKey] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const chatListBottomRef = useRef<HTMLDivElement>(null)
   const CHATS_PER_PAGE = 20
@@ -75,7 +77,9 @@ export function WhatsAppTab() {
   const needsConfig = !tenant?.botsailor_api_key
 
   const { data: chatsData, isLoading: chatsLoading } = useSWR(
-    !needsConfig && subTab === "chats" ? `/api/whatsapp/chats?page=${chatPage}&limit=${CHATS_PER_PAGE}` : null,
+    !needsConfig && subTab === "chats"
+      ? `/api/whatsapp/chats?page=${chatPage}&limit=${CHATS_PER_PAGE}&_k=${chatFetchKey}`
+      : null,
     fetcher, { refreshInterval: chatPage === 1 ? 15000 : 0 }
   )
   const { data: contactsData, isLoading: contactsLoading } = useSWR(
@@ -95,7 +99,6 @@ export function WhatsAppTab() {
     if (!chatsData) return
     const raw = chatsData?.message ?? chatsData?.data ?? chatsData?.chats
     const incoming: BotSailorChat[] = Array.isArray(raw) ? raw : []
-    console.log("[v0] WA chatsData received — chatPage:", chatPage, "incoming:", incoming.length, "keys:", Object.keys(chatsData))
 
     if (incoming.length === 0) {
       setHasMoreChats(false)
@@ -103,13 +106,11 @@ export function WhatsAppTab() {
     }
 
     if (chatPage === 1) {
-      console.log("[v0] WA setting page 1 chats:", incoming.length)
       setAllChats(incoming)
     } else {
       setAllChats(prev => {
         const existingIds = new Set(prev.map(c => String(c.subscriber_id ?? c.id)))
         const fresh = incoming.filter(c => !existingIds.has(String(c.subscriber_id ?? c.id)))
-        console.log("[v0] WA appending page", chatPage, "fresh:", fresh.length, "prev total:", prev.length)
         return [...prev, ...fresh]
       })
     }
@@ -119,12 +120,18 @@ export function WhatsAppTab() {
     }
   }, [chatsData, chatPage])
 
-  // Reset when switching sub-tabs or search changes
+  // Reset when switching sub-tabs — bump key to force SWR past stale cache
   useEffect(() => {
     setChatPage(1)
     setAllChats([])
     setHasMoreChats(true)
-  }, [subTab, search])
+    setChatFetchKey(k => k + 1)
+  }, [subTab])
+
+  // Reset when search changes (client-side filter, no need to bump key)
+  useEffect(() => {
+    // search is client-side filtered so no reset needed
+  }, [search])
 
   // IntersectionObserver at bottom of chat list to trigger next page
   useEffect(() => {
