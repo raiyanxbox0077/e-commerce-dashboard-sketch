@@ -20,12 +20,15 @@ export async function GET(
   const baseUrl = (tenant?.voice_base_url ?? 'https://voice.larynxai.in').replace(/\/$/, '')
   if (!apiKey) return NextResponse.json({ error: 'Voice API key not configured.' }, { status: 400 })
 
-  // Ensure a URL is absolute — prepend baseUrl if relative
+  const safeBase = 'https://voice.larynxai.in'
+  // Ensure a URL is absolute and always uses the real host (never localhost)
   function abs(url: unknown): string | null {
     if (!url) return null
     const s = String(url)
-    if (s.startsWith('http://') || s.startsWith('https://')) return s
-    return `${baseUrl}${s.startsWith('/') ? '' : '/'}${s}`
+    if (s.startsWith('http://') || s.startsWith('https://')) {
+      return s.replace(/^https?:\/\/localhost(:\d+)?/, safeBase)
+    }
+    return `${safeBase}/${s.startsWith('/') ? s.slice(1) : s}`
   }
 
   // LarynxAI/Dograh single run endpoint

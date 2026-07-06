@@ -40,11 +40,16 @@ export async function GET(req: Request) {
   const limitPerPage = parseInt(searchParams.get('limit') ?? '20')
   const statusFilter = searchParams.get('status') ?? ''
 
+  const safeBase = 'https://voice.larynxai.in'
   function abs(url: unknown): string | null {
     if (!url) return null
     const s = String(url)
-    if (s.startsWith('http://') || s.startsWith('https://')) return s
-    return `${baseUrl}${s.startsWith('/') ? '' : '/'}${s}`
+    // Already absolute — replace localhost origin with the real base
+    if (s.startsWith('http://') || s.startsWith('https://')) {
+      return s.replace(/^https?:\/\/localhost(:\d+)?/, safeBase)
+    }
+    // Relative path — prepend the safe base URL
+    return `${safeBase}/${s.startsWith('/') ? s.slice(1) : s}`
   }
 
   function normaliseRun(r: Record<string, unknown>) {
