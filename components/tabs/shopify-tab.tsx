@@ -153,7 +153,7 @@ const SAMPLE_COD: CodOrder = {
   state: "Karnataka",
   pincode: 560001,
   status: "confirmed",
-  RUN_ID: "run_sample_001",
+  RUN_ID: "432",
 }
 
 const COD_STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -440,7 +440,7 @@ const SAMPLE_SUPPORT: SupportTicket = {
   status: "in_progress",
   whatsapp_status: "sent",
   call_status: "COMPLETED",
-  run_id: "run_support_001",
+  run_id: "407",
   resolution: "Exchange initiated. Replacement dispatched within 2 business days.",
 }
 
@@ -580,7 +580,7 @@ const SAMPLE_REVIEW: Review = {
   status: "pending",
   whatsapp_status: "delivered",
   call_status: "COMPLETED",
-  run_id: "run_review_001",
+  run_id: "425",
 }
 
 const SENTIMENT_MAP: Record<string, { label: string; color: string; bg: string }> = {
