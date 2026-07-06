@@ -49,8 +49,8 @@ export async function PATCH(req: Request) {
     // shopify / client supabase
     'shopify_domain', 'shopify_admin_token', 'shopify_store_domain',
     'client_supabase_url', 'client_supabase_anon_key',
-    // voice workflow
-    'voice_workflow_id',
+    // voice workflows (multi, newline-separated) + legacy single field
+    'voice_workflow_ids', 'voice_workflow_id',
     // table name overrides
     'cod_table_name', 'cart_table_name', 'support_table_name', 'review_table_name',
     // razorpay

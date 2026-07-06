@@ -155,7 +155,8 @@ export function ProfileTab() {
   // Integration fields
   const [voiceApiKey, setVoiceApiKey] = useState("")
   const [voiceBaseUrl, setVoiceBaseUrl] = useState("")
-  const [voiceWorkflowId, setVoiceWorkflowId] = useState("")
+  // Multi-workflow: stored as newline-separated string in tenant, array in UI
+  const [workflowIds, setWorkflowIds] = useState<string[]>([""])
   const [botsailorKey, setBotsailorKey] = useState("")
   const [botsailorPhoneId, setBotsailorPhoneId] = useState("")
   const [shopifyDomain, setShopifyDomain] = useState("")
@@ -187,7 +188,9 @@ export function ProfileTab() {
     setPhone(tenant.phone ?? "")
     setVoiceApiKey(tenant.voice_api_key ?? "")
     setVoiceBaseUrl(tenant.voice_base_url ?? "")
-    setVoiceWorkflowId(tenant.voice_workflow_id ?? "")
+    // voice_workflow_ids stored as newline-separated string; fall back to old single field
+    const raw: string = tenant.voice_workflow_ids ?? tenant.voice_workflow_id ?? ""
+    setWorkflowIds(raw ? raw.split("\n").filter(Boolean) : [""])
     setBotsailorKey(tenant.botsailor_api_key ?? "")
     setBotsailorPhoneId(tenant.botsailor_phone_id ?? "")
     setShopifyDomain(tenant.shopify_store_domain ?? "")
@@ -310,16 +313,38 @@ export function ProfileTab() {
                 <div className="py-4 border-b border-black/[0.06]">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                      <p className="text-[13px] font-medium text-[#1d1d1f]">Workflow ID</p>
-                      <p className="text-[11px] text-[#6e6e73] mt-0.5">Fetch runs only from this workflow instead of all workflows</p>
+                      <p className="text-[13px] font-medium text-[#1d1d1f]">Workflow IDs</p>
+                      <p className="text-[11px] text-[#6e6e73] mt-0.5">Add one or more workflow IDs. Runs from all listed workflows will appear in the Calls tab.</p>
                     </div>
-                    <div className="sm:col-span-2 flex items-center gap-2">
-                      <input
-                        value={voiceWorkflowId}
-                        onChange={e => setVoiceWorkflowId(e.target.value)}
-                        placeholder="e.g. wf_abc123"
-                        className="w-full bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] font-mono outline-none border border-transparent focus:border-[#0066cc]/30 placeholder:text-[#c7c7cc]"
-                      />
+                    <div className="sm:col-span-2 space-y-2">
+                      {workflowIds.map((wfId, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            value={wfId}
+                            onChange={e => {
+                              const updated = [...workflowIds]
+                              updated[idx] = e.target.value
+                              setWorkflowIds(updated)
+                            }}
+                            placeholder={`e.g. wf_abc${idx + 1}`}
+                            className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] font-mono outline-none border border-transparent focus:border-[#0066cc]/30 placeholder:text-[#c7c7cc]"
+                          />
+                          {workflowIds.length > 1 && (
+                            <button
+                              onClick={() => setWorkflowIds(workflowIds.filter((_, i) => i !== idx))}
+                              className="p-2 rounded-lg hover:bg-[#ff3b30]/10 text-[#ff3b30] transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => setWorkflowIds([...workflowIds, ""])}
+                        className="text-[13px] font-medium text-[#0066cc] hover:underline"
+                      >
+                        + Add another workflow
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -474,7 +499,7 @@ export function ProfileTab() {
               <SaveButton payload={{
                 voice_api_key: voiceApiKey,
                 voice_base_url: voiceBaseUrl,
-                voice_workflow_id: voiceWorkflowId,
+                voice_workflow_ids: workflowIds.filter(Boolean).join("\n"),
                 botsailor_api_key: botsailorKey,
                 botsailor_phone_id: botsailorPhoneId,
                 shopify_store_domain: shopifyDomain,
