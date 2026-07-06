@@ -352,6 +352,7 @@ export function CallsTab() {
     fetcher
   )
 
+  const noWorkflowsConfigured: boolean = data?.no_workflows_configured === true
   const allRuns: Run[] = data?.runs ?? []
   const runs = search
     ? allRuns.filter(r =>
@@ -457,6 +458,14 @@ export function CallsTab() {
                       ))}
                     </tr>
                   ))
+                ) : noWorkflowsConfigured ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-14 text-center">
+                      <Bot className="w-8 h-8 text-[#c7c7cc] mx-auto mb-2" />
+                      <p className="text-[14px] font-semibold text-[#1d1d1f]">No workflows configured</p>
+                      <p className="text-[13px] text-[#6e6e73] mt-1">Go to Profile &rarr; Integrations &rarr; Voice and add your workflow IDs.</p>
+                    </td>
+                  </tr>
                 ) : runs.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-14 text-center">

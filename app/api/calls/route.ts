@@ -90,9 +90,10 @@ export async function GET(req: Request) {
     return byName ? String(byName.workflow_id) : trimmed
   }).filter(Boolean)
 
-  // If nothing was saved in profile, fall back to fetching all available workflow IDs
-  if (resolvedWorkflowIds.length === 0 && availableWorkflows.length > 0) {
-    resolvedWorkflowIds = availableWorkflows.map(w => String(w.workflow_id))
+  // If nothing saved — do NOT fall back to all workflows.
+  // Return empty so the UI can prompt the user to configure workflows in Profile.
+  if (resolvedWorkflowIds.length === 0) {
+    return NextResponse.json({ runs: [], total: 0, page: 1, total_pages: 0, no_workflows_configured: true })
   }
 
   // Helper to build a clean runs URL for one workflow (no duplicate filter keys)
@@ -108,34 +109,24 @@ export async function GET(req: Request) {
   let runsRaw: Record<string, unknown>[] = []
   let totalCount = 0
 
-  if (resolvedWorkflowIds.length > 0) {
-    // Fan out — one request per workflow, then merge sorted by created_at desc
-    const results = await Promise.all(
-      resolvedWorkflowIds.map(wfId =>
-        fetch(runsUrl(wfId), { headers: { 'X-API-Key': apiKey } })
-          .then(r => r.json())
-          .catch(() => ({ runs: [], total_count: 0 }))
-      )
+  // Fan out — one request per workflow, then merge sorted by created_at desc
+  const results = await Promise.all(
+    resolvedWorkflowIds.map(wfId =>
+      fetch(runsUrl(wfId), { headers: { 'X-API-Key': apiKey } })
+        .then(r => r.json())
+        .catch(() => ({ runs: [], total_count: 0 }))
     )
-    for (const raw of results) {
-      const batch: Record<string, unknown>[] = Array.isArray(raw) ? raw : (raw?.runs ?? [])
-      runsRaw.push(...batch)
-      totalCount += Number(raw?.total_count ?? batch.length)
-    }
-    runsRaw.sort((a, b) => {
-      const ta = a.created_at ? new Date(a.created_at as string).getTime() : 0
-      const tb = b.created_at ? new Date(b.created_at as string).getTime() : 0
-      return tb - ta
-    })
-  } else {
-    // Absolute fallback — fetch all org runs with no filter
-    const params = new URLSearchParams({ page, limit })
-    if (status) params.set('filters', JSON.stringify([{ field: 'status', op: 'eq', value: status }]))
-    const res = await fetch(`${baseUrl}/api/v1/organizations/usage/runs?${params}`, { headers: { 'X-API-Key': apiKey } })
-    const raw = await res.json()
-    runsRaw = Array.isArray(raw) ? raw : (raw?.runs ?? [])
-    totalCount = Number(raw?.total_count ?? runsRaw.length)
+  )
+  for (const raw of results) {
+    const batch: Record<string, unknown>[] = Array.isArray(raw) ? raw : (raw?.runs ?? [])
+    runsRaw.push(...batch)
+    totalCount += Number(raw?.total_count ?? batch.length)
   }
+  runsRaw.sort((a, b) => {
+    const ta = a.created_at ? new Date(a.created_at as string).getTime() : 0
+    const tb = b.created_at ? new Date(b.created_at as string).getTime() : 0
+    return tb - ta
+  })
 
   // Dograh response fields per run:
   // id, workflow_id, workflow_name, name, created_at,

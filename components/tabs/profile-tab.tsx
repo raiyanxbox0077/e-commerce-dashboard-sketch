@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
-import { User, Key, Bell, Shield, Building2, Eye, EyeOff, CheckCircle2, Copy, Loader2, RefreshCw, X, Plus } from "lucide-react"
+import { User, Key, Bell, Shield, Building2, Eye, EyeOff, CheckCircle2, Copy, Loader2, RefreshCw, X, Plus, ChevronDown as ChevronDownIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type ProfileSection = "account" | "integrations" | "security" | "notifications"
@@ -12,7 +12,8 @@ const fetcher = (url: string) => fetch(url).then(r => r.json())
 // ─── WorkflowPicker ───────────────────────────────────────────────────────────
 // Fetches available workflows from the API and lets the user pick by name.
 // Stores numeric IDs (e.g. "26") in state, displayed with workflow names.
-interface AvailableWorkflow { id: number; name: string; status?: string; total_runs?: number }
+// Dograh workflows use "workflow_id" as the id field
+interface AvailableWorkflow { workflow_id: number | string; name: string; status?: string; total_runs?: number }
 
 function WorkflowPicker({
   apiKey,
@@ -29,47 +30,38 @@ function WorkflowPicker({
   )
   const available: AvailableWorkflow[] = data?.workflows ?? []
 
-  // Normalise — resolve any saved name back to numeric id
+  // Resolve any saved value (may be a name from before) to its numeric workflow_id string
   function resolveId(val: string): string {
     if (!val) return ""
-    // If it's already a numeric string matching an available workflow, keep it
-    const byId = available.find(w => String(w.id) === val.trim())
-    if (byId) return String(byId.id)
-    // Try matching by name (case-insensitive) — migrate old saved names
-    const byName = available.find(w => w.name.toLowerCase() === val.trim().toLowerCase())
-    if (byName) return String(byName.id)
-    return val
+    const trimmed = val.trim()
+    const byId = available.find(w => String(w.workflow_id) === trimmed)
+    if (byId) return String(byId.workflow_id)
+    const byName = available.find(w => w.name.toLowerCase() === trimmed.toLowerCase())
+    if (byName) return String(byName.workflow_id)
+    return trimmed
   }
 
-  // Ids that are not yet in the list (available to add)
-  const addableWorkflows = available.filter(w => !selectedIds.map(resolveId).includes(String(w.id)))
-
-  function updateAt(idx: number, newId: string) {
-    const updated = [...selectedIds]
-    updated[idx] = newId
-    onChange(updated)
-  }
+  const resolvedIds = selectedIds.map(resolveId)
+  const addableWorkflows = available.filter(w => !resolvedIds.includes(String(w.workflow_id)))
 
   function removeAt(idx: number) {
     onChange(selectedIds.filter((_, i) => i !== idx))
   }
 
   function addWorkflow(id: string) {
-    if (!selectedIds.includes(id)) onChange([...selectedIds.filter(Boolean), id])
+    if (id && !resolvedIds.includes(id)) onChange([...selectedIds.filter(Boolean), id])
   }
-
-  const resolvedIds = selectedIds.map(resolveId)
 
   return (
     <div className="py-4 border-b border-black/[0.06]">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="flex flex-col gap-3">
         <div>
           <p className="text-[13px] font-medium text-[#1d1d1f]">Workflows</p>
           <p className="text-[11px] text-[#6e6e73] mt-0.5">
             Select workflows — runs from all selected workflows appear in the Calls tab.
           </p>
         </div>
-        <div className="sm:col-span-2 space-y-2">
+        <div className="space-y-2">
           {isLoading && (
             <div className="flex items-center gap-2 text-[13px] text-[#6e6e73]">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading workflows…
@@ -78,15 +70,15 @@ function WorkflowPicker({
 
           {/* Selected workflow chips */}
           {resolvedIds.filter(Boolean).map((wfId, idx) => {
-            const wf = available.find(w => String(w.id) === wfId)
+            const wf = available.find(w => String(w.workflow_id) === wfId)
             return (
-              <div key={idx} className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5">
+              <div key={idx} className="flex items-center gap-2 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 min-w-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-[#1d1d1f] truncate">
                     {wf ? wf.name : `ID: ${wfId}`}
                   </p>
                   <p className="text-[11px] font-mono text-[#6e6e73]">
-                    ID: {wfId}{wf ? ` · ${wf.total_runs ?? 0} runs` : ""}
+                    workflow_id: {wfId}{wf ? ` · ${wf.total_runs ?? 0} runs` : ""}
                   </p>
                 </div>
                 <button
@@ -99,22 +91,22 @@ function WorkflowPicker({
             )
           })}
 
-          {/* Add workflow dropdown */}
-          {addableWorkflows.length > 0 && (
-            <div className="flex items-center gap-2">
+          {/* Add workflow dropdown — constrained width, no overflow */}
+          {!isLoading && addableWorkflows.length > 0 && (
+            <div className="relative w-full">
               <select
-                defaultValue=""
-                onChange={e => { if (e.target.value) { addWorkflow(e.target.value); e.target.value = "" } }}
-                className="flex-1 bg-[#f5f5f7] rounded-xl px-3.5 py-2.5 text-[13px] text-[#1d1d1f] outline-none border border-transparent focus:border-[#0066cc]/30 appearance-none cursor-pointer"
+                value=""
+                onChange={e => { addWorkflow(e.target.value); (e.target as HTMLSelectElement).value = "" }}
+                className="w-full max-w-full bg-[#f5f5f7] rounded-xl pl-3.5 pr-8 py-2.5 text-[13px] text-[#1d1d1f] outline-none border border-transparent focus:border-[#0066cc]/30 appearance-none cursor-pointer truncate"
               >
-                <option value="" disabled>Add a workflow…</option>
+                <option value="" disabled>+ Add a workflow…</option>
                 {addableWorkflows.map(w => (
-                  <option key={w.id} value={String(w.id)}>
-                    {w.name} ({w.total_runs ?? 0} runs)
+                  <option key={String(w.workflow_id)} value={String(w.workflow_id)}>
+                    {w.name} (ID: {w.workflow_id})
                   </option>
                 ))}
               </select>
-              <Plus className="w-4 h-4 text-[#6e6e73] shrink-0 pointer-events-none" />
+              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e6e73]" />
             </div>
           )}
 
