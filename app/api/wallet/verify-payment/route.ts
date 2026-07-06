@@ -12,6 +12,7 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Parse body — use a different variable name to avoid conflict with the hmac string below
   let parsed: { razorpay_order_id?: string; razorpay_payment_id?: string; razorpay_signature?: string; amount?: number }
   try {
     parsed = await req.json()
@@ -20,8 +21,8 @@ export async function POST(req: Request) {
   }
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = parsed
 
-  // Verify signature
-  const hmacPayload = razorpay_order_id + '|' + razorpay_payment_id
+  // Build HMAC payload — named distinctly to avoid any shadowing conflict
+  const hmacPayload = `${razorpay_order_id}|${razorpay_payment_id}`
   const expectedSignature = crypto
     .createHmac('sha256', keySecret)
     .update(hmacPayload)
