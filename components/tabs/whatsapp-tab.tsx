@@ -508,15 +508,15 @@ export function WhatsAppTab() {
                     <div className={cn(
                       "max-w-[75%] px-3.5 py-2.5 rounded-[14px]",
                       isUser
-                        ? "bg-ink text-white rounded-br-[4px]"
-                        : "bg-card text-ink rounded-bl-[4px] border border-hairline"
+                        ? "bg-ink text-white rounded-br-[4px] dark:bg-[#1f1f1f] dark:text-white"
+                        : "bg-card text-ink rounded-bl-[4px] border border-hairline dark:bg-[#1f1f1f] dark:text-white"
                     )}>
                       {!isUser && (
                         <p className="text-[10px] font-semibold text-primary mb-1 uppercase tracking-wider">Bot / Agent</p>
                       )}
-                      <p className="text-[13px] leading-relaxed">{text}</p>
+                      <p className="text-[13px] leading-relaxed dark:text-white">{text}</p>
                       <div className={cn("flex items-center gap-1 mt-1", isUser ? "justify-end" : "justify-start")}>
-                        <span className={cn("text-[10px]", isUser ? "text-white/60" : "text-faint")}>{time}</span>
+                        <span className={cn("text-[10px]", isUser ? "text-white/60" : "text-faint dark:text-white/60")}>{time}</span>
                         {isUser && msg.status === "read"
                           ? <CheckCheck className="w-3 h-3 text-teal" />
                           : isUser ? <Check className="w-3 h-3 text-white/60" /> : null}
