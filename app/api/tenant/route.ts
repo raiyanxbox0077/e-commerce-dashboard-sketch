@@ -57,6 +57,8 @@ export async function PATCH(req: Request) {
     'razorpay_key_id', 'razorpay_key_secret',
     // notifications
     'notification_prefs',
+    // agent toggles
+    'agent_toggles',
   ]
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
@@ -65,7 +67,7 @@ export async function PATCH(req: Request) {
 
   // Columns that may not exist yet in older deployments — silently drop them if Postgres
   // returns a "column does not exist" error, then retry without those columns.
-  const newColumns = ['support_table_name', 'review_table_name', 'voice_workflow_id', 'shopify_admin_token']
+  const newColumns = ['support_table_name', 'review_table_name', 'voice_workflow_id', 'shopify_admin_token', 'agent_toggles']
 
   let payload = { ...updates, updated_at: new Date().toISOString() }
   let { data, error } = await supabase
