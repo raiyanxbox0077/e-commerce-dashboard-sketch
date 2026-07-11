@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
 import { Search, Send, MoreHorizontal, Phone, Users, ChevronRight, Check, CheckCheck, AlertCircle, Clock, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTenant } from "@/hooks/use-tenant"
+import { createClient } from "@/lib/supabase/client"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -47,8 +48,27 @@ interface Message {
   status?: string
 }
 
+interface DbMessage {
+  id: string
+  subscriber_id: string | null
+  phone_number: string | null
+  sender_name: string | null
+  message_text: string | null
+  message_type: string | null
+  direction: string | null
+  created_at: string
+  raw_payload: Record<string, unknown>
+}
+
 function getInitials(first?: string, last?: string) {
   return `${(first ?? "?")[0] ?? ""}${(last ?? "")[0] ?? ""}`.toUpperCase()
+}
+
+function splitName(full?: string | null) {
+  if (!full) return { first: "", last: "" }
+  const parts = full.trim().split(/\s+/)
+  if (parts.length === 1) return { first: parts[0], last: "" }
+  return { first: parts[0], last: parts.slice(1).join(" ") }
 }
 
 // Avatar colours based on initials — Airbnb palette
@@ -63,8 +83,140 @@ function avatarColor(name: string) {
   return AVATAR_COLORS[idx]
 }
 
+// DEMO DATA — safe to delete after demo
+const DEMO_CHATS: BotSailorChat[] = [
+  {
+    id: "demo-1",
+    subscriber_id: 9001,
+    chat_id: "919876543210",
+    first_name: "Ravi",
+    last_name: "Kumar",
+    phone: "+91 98765 43210",
+    last_message: "Yes, please confirm my order.",
+    last_message_time: "2026-07-11T08:45:00.000Z",
+    unread_count: 0,
+    unseen_count: 0,
+    bot_status: "on",
+  },
+  {
+    id: "demo-2",
+    subscriber_id: 9002,
+    chat_id: "919123456789",
+    first_name: "Priya",
+    last_name: "Sharma",
+    phone: "+91 91234 56789",
+    last_message: "Confirmed. Thank you!",
+    last_message_time: "2026-07-11T09:12:00.000Z",
+    unread_count: 0,
+    unseen_count: 0,
+    bot_status: "on",
+  },
+  {
+    id: "demo-3",
+    subscriber_id: 9003,
+    chat_id: "919880012345",
+    first_name: "Amit",
+    last_name: "Patel",
+    phone: "+91 88001 23456",
+    last_message: "I need help with my order status.",
+    last_message_time: "2026-07-11T10:30:00.000Z",
+    unread_count: 1,
+    unseen_count: 1,
+    bot_status: "on",
+  },
+  {
+    id: "demo-4",
+    subscriber_id: 9004,
+    chat_id: "919770098876",
+    first_name: "Sneha",
+    last_name: "Reddy",
+    phone: "+91 77009 88765",
+    last_message: "Hi, I left items in my cart. Any discount?",
+    last_message_time: "2026-07-10T18:20:00.000Z",
+    unread_count: 0,
+    unseen_count: 0,
+    bot_status: "on",
+  },
+  {
+    id: "demo-5",
+    subscriber_id: 9005,
+    chat_id: "919988766554",
+    first_name: "Vikram",
+    last_name: "Singh",
+    phone: "+91 99887 66554",
+    last_message: "Please cancel my COD order.",
+    last_message_time: "2026-07-10T14:05:00.000Z",
+    unread_count: 0,
+    unseen_count: 0,
+    bot_status: "on",
+  },
+  {
+    id: "demo-6",
+    subscriber_id: 9006,
+    chat_id: "919909090808",
+    first_name: "Ananya",
+    last_name: "Iyer",
+    phone: "+91 90909 80808",
+    last_message: "Got it, thanks for the update.",
+    last_message_time: "2026-07-10T11:50:00.000Z",
+    unread_count: 0,
+    unseen_count: 0,
+    bot_status: "on",
+  },
+]
+
+const DEMO_MESSAGES: Record<string, Message[]> = {
+  "919876543210": [
+    { id: "d1m1", sender_type: "agent", direction: "outgoing", message: "Hi Ravi, this is LarynxAI calling about your order #1001. Can you please confirm if you want to proceed?", text: "Hi Ravi, this is LarynxAI calling about your order #1001. Can you please confirm if you want to proceed?", created_at: "2026-07-11T08:42:00.000Z", time: "08:42", status: "read" },
+    { id: "d1m2", sender_type: "user", direction: "incoming", message: "Yes, I want the order. Please confirm it.", text: "Yes, I want the order. Please confirm it.", created_at: "2026-07-11T08:43:00.000Z", time: "08:43" },
+    { id: "d1m3", sender_type: "agent", direction: "outgoing", message: "Thank you! Your COD order #1001 has been confirmed and will be dispatched today.", text: "Thank you! Your COD order #1001 has been confirmed and will be dispatched today.", created_at: "2026-07-11T08:44:00.000Z", time: "08:44", status: "read" },
+    { id: "d1m4", sender_type: "user", direction: "incoming", message: "Yes, please confirm my order.", text: "Yes, please confirm my order.", created_at: "2026-07-11T08:45:00.000Z", time: "08:45" },
+  ],
+  "919123456789": [
+    { id: "d2m1", sender_type: "agent", direction: "outgoing", message: "Hello Priya, your order #1002 is ready for COD confirmation. Shall we proceed?", text: "Hello Priya, your order #1002 is ready for COD confirmation. Shall we proceed?", created_at: "2026-07-11T09:08:00.000Z", time: "09:08", status: "read" },
+    { id: "d2m2", sender_type: "user", direction: "incoming", message: "Yes, confirm it.", text: "Yes, confirm it.", created_at: "2026-07-11T09:09:00.000Z", time: "09:09" },
+    { id: "d2m3", sender_type: "agent", direction: "outgoing", message: "Confirmed! Your order #1002 will reach you by Friday. Thank you for shopping with us.", text: "Confirmed! Your order #1002 will reach you by Friday. Thank you for shopping with us.", created_at: "2026-07-11T09:10:00.000Z", time: "09:10", status: "read" },
+    { id: "d2m4", sender_type: "user", direction: "incoming", message: "Confirmed. Thank you!", text: "Confirmed. Thank you!", created_at: "2026-07-11T09:12:00.000Z", time: "09:12" },
+  ],
+  "919880012345": [
+    { id: "d3m1", sender_type: "user", direction: "incoming", message: "Hi, I need help with my order status.", text: "Hi, I need help with my order status.", created_at: "2026-07-11T10:28:00.000Z", time: "10:28" },
+    { id: "d3m2", sender_type: "agent", direction: "outgoing", message: "Hi Amit, I can help with that. Your order #1003 is currently pending COD confirmation. Would you like me to confirm it?", text: "Hi Amit, I can help with that. Your order #1003 is currently pending COD confirmation. Would you like me to confirm it?", created_at: "2026-07-11T10:29:00.000Z", time: "10:29", status: "read" },
+    { id: "d3m3", sender_type: "user", direction: "incoming", message: "Yes, please confirm. Also when will it be delivered?", text: "Yes, please confirm. Also when will it be delivered?", created_at: "2026-07-11T10:30:00.000Z", time: "10:30" },
+    { id: "d3m4", sender_type: "agent", direction: "outgoing", message: "Done! Order #1003 is confirmed. Expected delivery: 14 July 2026.", text: "Done! Order #1003 is confirmed. Expected delivery: 14 July 2026.", created_at: "2026-07-11T10:31:00.000Z", time: "10:31", status: "read" },
+  ],
+  "919770098876": [
+    { id: "d4m1", sender_type: "agent", direction: "outgoing", message: "Hi Sneha, you left Cotton Kurta and Wireless Earbuds in your cart. Complete your order now and get 10% off with code SAVE10.", text: "Hi Sneha, you left Cotton Kurta and Wireless Earbuds in your cart. Complete your order now and get 10% off with code SAVE10.", created_at: "2026-07-10T18:15:00.000Z", time: "18:15", status: "read" },
+    { id: "d4m2", sender_type: "user", direction: "incoming", message: "Hi, I left items in my cart. Any discount?", text: "Hi, I left items in my cart. Any discount?", created_at: "2026-07-10T18:20:00.000Z", time: "18:20" },
+    { id: "d4m3", sender_type: "agent", direction: "outgoing", message: "Yes! Use code SAVE10 for 10% off your cart. The offer expires in 24 hours.", text: "Yes! Use code SAVE10 for 10% off your cart. The offer expires in 24 hours.", created_at: "2026-07-10T18:21:00.000Z", time: "18:21", status: "read" },
+  ],
+  "919988766554": [
+    { id: "d5m1", sender_type: "agent", direction: "outgoing", message: "Hi Vikram, your COD order #1005 is pending confirmation. Can you please confirm?", text: "Hi Vikram, your COD order #1005 is pending confirmation. Can you please confirm?", created_at: "2026-07-10T14:02:00.000Z", time: "14:02", status: "read" },
+    { id: "d5m2", sender_type: "user", direction: "incoming", message: "Please cancel my COD order.", text: "Please cancel my COD order.", created_at: "2026-07-10T14:05:00.000Z", time: "14:05" },
+    { id: "d5m3", sender_type: "agent", direction: "outgoing", message: "Understood. I have cancelled order #1005. You will not be charged.", text: "Understood. I have cancelled order #1005. You will not be charged.", created_at: "2026-07-10T14:06:00.000Z", time: "14:06", status: "read" },
+  ],
+  "919909090808": [
+    { id: "d6m1", sender_type: "user", direction: "incoming", message: "Where is my order #1008?", text: "Where is my order #1008?", created_at: "2026-07-10T11:47:00.000Z", time: "11:47" },
+    { id: "d6m2", sender_type: "agent", direction: "outgoing", message: "Hi Ananya, order #1008 has been dispatched and is out for delivery today. Tracking: DEL123456789.", text: "Hi Ananya, order #1008 has been dispatched and is out for delivery today. Tracking: DEL123456789.", created_at: "2026-07-10T11:48:00.000Z", time: "11:48", status: "read" },
+    { id: "d6m3", sender_type: "user", direction: "incoming", message: "Got it, thanks for the update.", text: "Got it, thanks for the update.", created_at: "2026-07-10T11:50:00.000Z", time: "11:50" },
+  ],
+}
+
+function dbToUiMessage(row: DbMessage): Message {
+  const isInbound = row.direction === "inbound"
+  return {
+    id: row.id,
+    sender_type: isInbound ? "user" : "agent",
+    direction: isInbound ? "incoming" : "outgoing",
+    message: row.message_text ?? "",
+    text: row.message_text ?? "",
+    created_at: row.created_at,
+    status: isInbound ? undefined : "sent",
+  }
+}
+
 export function WhatsAppTab() {
   const { tenant } = useTenant()
+  const isDemo = !tenant?.botsailor_api_key
   const [subTab, setSubTab] = useState<WaSubTab>("chats")
   const [selectedId, setSelectedId] = useState<string | number | null>(null)
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
@@ -73,107 +225,162 @@ export function WhatsAppTab() {
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const [is24hrBlocked, setIs24hrBlocked] = useState(false)
+  const [dbMessages, setDbMessages] = useState<DbMessage[]>([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
   const [chatPage, setChatPage] = useState(1)
-  const [allChats, setAllChats] = useState<BotSailorChat[]>([])
-  const [hasMoreChats, setHasMoreChats] = useState(true)
-  const [chatFetchKey, setChatFetchKey] = useState(0)
+  const [hasMoreChats, setHasMoreChats] = useState(!isDemo)
   const bottomRef = useRef<HTMLDivElement>(null)
   const CHATS_PER_PAGE = 20
 
-  const needsConfig = !tenant?.botsailor_api_key
-
-  // BotSailor's subscriber list ignores offset (offset >= limit returns nothing),
-  // so infinite scroll works by growing the `limit` and re-fetching from offset 0.
-  const requestedLimit = chatPage * CHATS_PER_PAGE
-  const { data: chatsData, isLoading: chatsLoading, isValidating: chatsValidating } = useSWR(
-    !needsConfig && subTab === "chats"
-      ? `/api/whatsapp/chats?page=1&limit=${requestedLimit}&_k=${chatFetchKey}`
-      : null,
-    fetcher,
-    { refreshInterval: 15000, keepPreviousData: true }
-  )
+  // Contacts still come from BotSailor (read-only, low frequency)
   const { data: contactsData, isLoading: contactsLoading } = useSWR(
-    !needsConfig && subTab === "contacts"
+    !isDemo && subTab === "contacts"
       ? `/api/whatsapp/contacts${search ? `?search=${encodeURIComponent(search)}` : ""}`
       : null,
     fetcher
   )
-  const { data: messagesData, isLoading: msgLoading } = useSWR(
-    selectedPhone ? `/api/whatsapp/messages?phone_number=${encodeURIComponent(selectedPhone)}` : null,
-    fetcher,
-    { refreshInterval: 8000 }
-  )
 
-  // Each fetch returns a superset (limit grows with chatPage), so we replace the
-  // whole list. If we got fewer rows than requested, there are no more chats.
+  // Fetch initial messages from Supabase + subscribe to realtime PUSH events
   useEffect(() => {
-    if (!chatsData) return
-    const raw = chatsData?.message ?? chatsData?.data ?? chatsData?.chats
-    // BotSailor returns error as string in message field
-    if (!Array.isArray(raw)) {
-      setHasMoreChats(false)
-      return
-    }
-    const sorted = [...(raw as BotSailorChat[])].sort((a, b) => {
-      const ta = new Date(a.last_message_time ?? 0).getTime()
-      const tb = new Date(b.last_message_time ?? 0).getTime()
-      return tb - ta
-    })
-    setAllChats(sorted)
-    setHasMoreChats(raw.length >= requestedLimit)
-  }, [chatsData, requestedLimit])
+    if (isDemo) return
+    let mounted = true
+    const supabase = createClient()
 
-  // Reset when switching sub-tabs
+    async function loadMessages() {
+      setMessagesLoading(true)
+      const { data, error } = await supabase
+        .from("whatsapp_messages")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500)
+      if (mounted) {
+        if (error) console.error("Realtime load error:", error)
+        setDbMessages(data ?? [])
+        setMessagesLoading(false)
+      }
+    }
+
+    loadMessages()
+
+    const channel = supabase
+      .channel("whatsapp_messages_changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "whatsapp_messages" },
+        (payload) => {
+          const newRow = payload.new as DbMessage
+          setDbMessages(prev => {
+            if (prev.some(m => m.id === newRow.id)) return prev
+            // De-duplicate against a recent optimistic outbound message for same phone + text
+            const createdTime = new Date(newRow.created_at).getTime()
+            const withoutOptimistic = prev.filter(m => {
+              if (m.id.startsWith("optimistic-")) {
+                const samePhone = m.phone_number === newRow.phone_number
+                const sameText = m.message_text === newRow.message_text
+                const recent = Math.abs(new Date(m.created_at).getTime() - createdTime) < 60000
+                return !(samePhone && sameText && recent)
+              }
+              return true
+            })
+            return [newRow, ...withoutOptimistic]
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      mounted = false
+      supabase.removeChannel(channel)
+    }
+  }, [isDemo])
+
+  // Derived chat list from Supabase messages (PUSH model)
+  const derivedChats: BotSailorChat[] = useMemo(() => {
+    if (isDemo) return DEMO_CHATS
+    const grouped = new Map<string, DbMessage[]>()
+    for (const msg of dbMessages) {
+      const phone = msg.phone_number
+      if (!phone) continue
+      if (!grouped.has(phone)) grouped.set(phone, [])
+      grouped.get(phone)!.push(msg)
+    }
+
+    const chats: BotSailorChat[] = []
+    for (const [phone, msgs] of grouped) {
+      const sorted = [...msgs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      const latest = sorted[0]
+      const nameParts = splitName(latest.sender_name ?? "")
+      chats.push({
+        id: phone,
+        subscriber_id: Number(latest.subscriber_id) || undefined,
+        chat_id: phone,
+        first_name: nameParts.first,
+        last_name: nameParts.last,
+        phone,
+        last_message: latest.message_text ?? "",
+        last_message_time: latest.created_at,
+        unread_count: sorted.filter(m => m.direction === "inbound").length,
+        unseen_count: sorted.filter(m => m.direction === "inbound").length,
+        bot_status: "on",
+      })
+    }
+    return chats.sort((a, b) => new Date(b.last_message_time ?? 0).getTime() - new Date(a.last_message_time ?? 0).getTime())
+  }, [dbMessages, isDemo])
+
+  const visibleChats = useMemo(() => {
+    const page = derivedChats.slice(0, chatPage * CHATS_PER_PAGE)
+    return page
+  }, [derivedChats, chatPage])
+
+  useEffect(() => {
+    setHasMoreChats(visibleChats.length < derivedChats.length)
+  }, [visibleChats.length, derivedChats.length])
+
+  // Reset pagination when search or tab changes
   useEffect(() => {
     setChatPage(1)
-    setAllChats([])
-    setHasMoreChats(true)
-    setChatFetchKey(k => k + 1)
-  }, [subTab])
+  }, [search, subTab])
 
-  // Scroll-based pagination — guard with ref so we don't double-fire
+  // Scroll-based pagination
   const loadingPageRef = useRef(false)
   const handleChatListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (!hasMoreChats || loadingPageRef.current || chatsValidating) return
+    if (!hasMoreChats || loadingPageRef.current) return
     const el = e.currentTarget
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) {
       loadingPageRef.current = true
       setChatPage(p => p + 1)
     }
-  }, [hasMoreChats, chatsValidating])
+  }, [hasMoreChats])
 
-  // Reset scroll guard after page increment resolves (chatsData changes)
   useEffect(() => {
     loadingPageRef.current = false
-  }, [chatsData])
+  }, [visibleChats])
 
-  const chats = allChats
   const rawContacts = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers
   const contacts: BotSailorContact[] = Array.isArray(rawContacts) ? rawContacts : []
-  const rawMessages = messagesData?.messages ?? messagesData?.data ?? messagesData?.message
-  const messages: Message[] = Array.isArray(rawMessages)
-    ? [...rawMessages].sort((a, b) => {
-        const ta = new Date((a as Record<string, unknown>).conversation_time as string ?? a.created_at ?? 0).getTime()
-        const tb = new Date((b as Record<string, unknown>).conversation_time as string ?? b.created_at ?? 0).getTime()
-        return ta - tb
-      })
-    : []
+  const demoMessages = selectedPhone ? (DEMO_MESSAGES[selectedPhone] ?? []) : []
 
-  // Error: only show when allChats is empty after load (not during pagination)
-  const waError = allChats.length === 0 && !chatsLoading
-    ? (chatsData?.error
-        ?? (typeof chatsData?.message === "string" ? chatsData.message : null)
-        ?? (contactsData?.error ?? (typeof contactsData?.message === "string" ? contactsData.message : null)))
+  const messages: Message[] = useMemo(() => {
+    if (isDemo) return demoMessages
+    const filtered = dbMessages
+      .filter(m => m.phone_number === selectedPhone)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    return filtered.map(dbToUiMessage)
+  }, [dbMessages, selectedPhone, isDemo, demoMessages])
+
+  const chatsLoading = messagesLoading && !isDemo && visibleChats.length === 0
+  const waError = !isDemo && dbMessages.length === 0 && !messagesLoading
+    ? (contactsData?.error ?? (typeof contactsData?.message === "string" ? contactsData.message : null))
     : null
 
   const filteredChats = search
-    ? chats.filter(c =>
+    ? visibleChats.filter(c =>
         `${c.first_name ?? ""} ${c.last_name ?? ""}`.toLowerCase().includes(search.toLowerCase()) ||
         (c.chat_id ?? c.phone ?? "").includes(search)
       )
-    : chats
+    : visibleChats
 
-  const selectedChat = chats.find(c => c.subscriber_id === selectedId || c.id === selectedId)
+  const selectedChat = filteredChats.find(c => c.subscriber_id === selectedId || c.id === selectedId)
   const selectedContact = contacts.find(c => c.subscriber_id === selectedId)
   const selectedPerson = selectedChat ?? selectedContact
 
@@ -193,11 +400,52 @@ export function WhatsAppTab() {
     if (!messageInput.trim() || !selectedPhone || sending) return
     setSending(true)
     setSendError(null)
+
+    const text = messageInput.trim()
+    const optimisticId = `optimistic-${Date.now()}`
+    const optimisticDbRow: DbMessage = {
+      id: optimisticId,
+      subscriber_id: selectedId?.toString() ?? null,
+      phone_number: selectedPhone,
+      sender_name: null,
+      message_text: text,
+      message_type: "text",
+      direction: "outbound",
+      created_at: new Date().toISOString(),
+      raw_payload: {},
+    }
+
+    if (isDemo) {
+      setMessageInput("")
+      const optimistic: Message = {
+        id: optimisticId,
+        sender_type: "agent",
+        direction: "outgoing",
+        message: text,
+        text,
+        created_at: optimisticDbRow.created_at,
+        time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+        status: "sent",
+      }
+      if (!DEMO_MESSAGES[selectedPhone]) DEMO_MESSAGES[selectedPhone] = []
+      DEMO_MESSAGES[selectedPhone].push(optimistic)
+      globalMutate(`/api/whatsapp/messages?phone_number=${encodeURIComponent(selectedPhone)}`, (prev: any) => {
+        const messages = prev?.messages ?? DEMO_MESSAGES[selectedPhone] ?? []
+        return { ...prev, messages: [...messages, optimistic] }
+      }, false)
+      setSending(false)
+      return
+    }
+
+    // Show optimistic message immediately in the realtime-driven list
+    setDbMessages(prev => [optimisticDbRow, ...prev])
+    setMessageInput("")
+
     try {
       const res = await fetch("/api/whatsapp/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: selectedPhone, message: messageInput.trim() }),
+        body: JSON.stringify({ phone_number: selectedPhone, message: text }),
       })
       const data = await res.json()
       // BotSailor 24-hour window error detection
@@ -210,47 +458,22 @@ export function WhatsAppTab() {
       ) {
         setIs24hrBlocked(true)
         setSendError("Sending outside the 24-hour window is not allowed by WhatsApp. You can only send template messages to this contact.")
+        // Remove optimistic on failure and restore input
+        setDbMessages(prev => prev.filter(m => m.id !== optimisticId))
+        setMessageInput(text)
       } else if (!res.ok || (data?.status !== undefined && String(data.status) !== "1")) {
         setSendError(errMsg || "Failed to send message. Please try again.")
-      } else {
-        setMessageInput("")
-        const optimistic: Message = {
-          id: `optimistic-${Date.now()}`,
-          sender_type: "agent",
-          direction: "outgoing",
-          message: messageInput.trim(),
-          text: messageInput.trim(),
-          created_at: new Date().toISOString(),
-          time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-          status: "sent",
-        }
-        globalMutate(`/api/whatsapp/messages?phone_number=${encodeURIComponent(selectedPhone)}`, (prev: any) => {
-          if (!prev || !Array.isArray(prev.messages)) return prev
-          return { ...prev, messages: [...prev.messages, optimistic] }
-        }, false)
-        globalMutate(`/api/whatsapp/messages?phone_number=${encodeURIComponent(selectedPhone)}`)
+        setDbMessages(prev => prev.filter(m => m.id !== optimisticId))
+        setMessageInput(text)
       }
+      // On success, the BotSailor webhook will insert the real outbound row via Supabase Realtime
     } catch {
       setSendError("Network error. Please check your connection.")
+      setDbMessages(prev => prev.filter(m => m.id !== optimisticId))
+      setMessageInput(text)
     } finally {
       setSending(false)
     }
-  }
-
-  if (needsConfig) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="w-14 h-14 bg-surface rounded-[14px] flex items-center justify-center mb-4 border border-hairline">
-          <svg viewBox="0 0 24 24" className="w-6 h-6 text-faint" fill="currentColor">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-          </svg>
-        </div>
-        <h3 className="text-[15px] font-semibold text-ink">BotSailor not configured</h3>
-        <p className="text-[13px] text-mute mt-1 max-w-xs">
-          Add your BotSailor API key in Settings &rarr; Integrations to view chats.
-        </p>
-      </div>
-    )
   }
 
   return (
@@ -305,7 +528,7 @@ export function WhatsAppTab() {
               className="flex-1 overflow-y-auto"
               onScroll={handleChatListScroll}
             >
-              {chatsLoading && chatPage === 1 && allChats.length === 0 ? (
+              {chatsLoading ? (
                 // Skeleton only on first load
                 [...Array(7)].map((_, i) => (
                   <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-hair2">
@@ -322,7 +545,7 @@ export function WhatsAppTab() {
                   {search ? "No chats match your search" : "No chats found"}
                 </div>
               ) : filteredChats.map(chat => {
-                const sid = chat.subscriber_id ?? chat.id
+                const sid = (chat.subscriber_id ?? chat.id ?? chat.phone) as string | number
                 const firstName = chat.first_name ?? ""
                 const lastName = chat.last_name ?? ""
                 const unread = chat.unseen_count ?? chat.unread_count ?? 0
@@ -371,12 +594,12 @@ export function WhatsAppTab() {
               })}
 
               {/* Pagination loader */}
-              {chatsValidating && chatPage > 1 && hasMoreChats && (
+              {hasMoreChats && (
                 <div className="flex justify-center py-4">
                   <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
-              {!hasMoreChats && allChats.length > CHATS_PER_PAGE && (
+              {!hasMoreChats && visibleChats.length > CHATS_PER_PAGE && (
                 <p className="text-center text-[11px] text-faint py-3">All conversations loaded</p>
               )}
             </div>
@@ -473,17 +696,9 @@ export function WhatsAppTab() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-surface">
-              {msgLoading ? (
+              {messagesLoading && messages.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : messagesData?.error ? (
-                <div className="flex items-center justify-center py-8 px-4 text-center">
-                  <div>
-                    <AlertCircle className="w-6 h-6 text-dangertext mx-auto mb-2" />
-                    <p className="text-[13px] text-dangertext">{messagesData.error}</p>
-                    <p className="text-[11px] text-faint mt-1">Phone: {selectedPhone}</p>
-                  </div>
                 </div>
               ) : messages.length === 0 ? (
                 <div className="text-center py-8 text-[13px] text-faint">
@@ -491,7 +706,7 @@ export function WhatsAppTab() {
                   {selectedPhone && <p className="text-[11px] text-faint mt-1">Phone: {selectedPhone}</p>}
                 </div>
               ) : messages.map((msg, i) => {
-                const rawMsg = msg as Record<string, unknown>
+                const rawMsg = (msg as unknown) as Record<string, unknown>
                 const isUser = rawMsg.sender === "user" || rawMsg.sender === "subscriber"
                   || msg.sender_type === "user" || msg.sender_type === "subscriber"
                   || msg.direction === "incoming"
