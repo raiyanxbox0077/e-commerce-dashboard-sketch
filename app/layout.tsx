@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: 'LarynxAI Dashboard',
   description: 'AI voice calls, Shopify order management, and WhatsApp CRM — all in one place.',
   generator: 'v0.dev',
+  icons: { icon: '/logo.png' },
 }
 
 export const viewport: Viewport = {

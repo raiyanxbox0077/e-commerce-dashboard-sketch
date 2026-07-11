@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
+import Image from "next/image"
 import {
   LayoutDashboard,
   PhoneCall,
@@ -13,7 +14,6 @@ import {
   ChevronRight,
   X,
   LogOut,
-  Zap,
 } from "lucide-react"
 
 export type NavTab =
@@ -87,9 +87,7 @@ export function Sidebar({
         {/* Logo */}
         <div className="flex items-center justify-between px-5 h-[64px] border-b border-hairline">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-            </div>
+            <Image src="/logo.png" alt="LarynxAI" width={28} height={28} className="rounded-lg" />
             <span className="text-[15px] font-semibold text-ink tracking-tight">LarynxAI</span>
           </div>
           <button
