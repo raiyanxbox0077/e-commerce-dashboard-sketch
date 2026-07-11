@@ -5,19 +5,12 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { useTenant } from "@/hooks/use-tenant"
-import { Check, Loader2 } from "lucide-react"
+import { Check, Loader2, ShieldCheck, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-function ShopifyLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-      <path d="M15.337 3.415c-.042-.026-.084-.043-.126-.043h-.008c-.05 0-.1.017-.142.05l-1.092.82c-.034-.1-.092-.2-.167-.292a1.023 1.023 0 0 0-.726-.342h-.05c-.025 0-.05 0-.075.008l-.459-1.09a.27.27 0 0 0-.25-.167H9.45a.27.27 0 0 0-.267.225l-.225 1.15c-.142.042-.275.1-.392.167a1.55 1.55 0 0 0-.567.55c-.15.234-.234.518-.234.827 0 .042.008.084.017.125l-.926.693a.276.276 0 0 0-.108.2c0 .017.008.042.017.059l1.918 7.54c.025.1.117.167.217.167h.008c.05-.008.092-.034.125-.067l.985-1.068c.15.117.342.184.542.184.325 0 .617-.167.793-.426l.542.459c.05.042.117.067.184.067.092 0 .175-.05.225-.126l1.76-2.94c.025-.042.034-.092.034-.142a.27.27 0 0 0-.142-.234l-.459-.25 1.31-4.872a.268.268 0 0 0-.05-.226zM11.2 4.342c.142-.05.292-.075.45-.075.2 0 .392.05.559.142.208.117.367.3.459.525.05.126.075.267.075.409 0 .075-.008.15-.025.225l-.042.167-.985.342-1.26-1.193.769-.542zm-.359 1.385l1.268 1.201-1.235.426-.033-1.627zM14.27 5.16l-1.243 4.622-.567-.392 1.293-4.797.517.567z"/>
-    </svg>
-  )
-}
 
 function WhatsAppLogo({ className }: { className?: string }) {
   return (
@@ -30,9 +23,10 @@ function WhatsAppLogo({ className }: { className?: string }) {
 type ConnectionState = "idle" | "loading" | "connected"
 
 function ConnectCard({
-  logo: Logo,
+  logo,
   brandColor,
   title,
+  description,
   inputLabel,
   placeholder,
   buttonText,
@@ -41,9 +35,10 @@ function ConnectCard({
   state,
   onConnect,
 }: {
-  logo: React.ElementType
+  logo: React.ReactNode
   brandColor: string
   title: string
+  description: string
   inputLabel: string
   placeholder: string
   buttonText: string
@@ -53,21 +48,21 @@ function ConnectCard({
   onConnect: () => void
 }) {
   return (
-    <div className="bg-card rounded-[14px] border border-hairline p-6 flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+    <div className="bg-card rounded-[16px] border border-hairline p-6 flex flex-col gap-5">
+      <div className="flex items-start gap-3">
         <div
-          className={cn("w-12 h-12 rounded-[12px] flex items-center justify-center text-white", brandColor)}
+          className={cn("w-12 h-12 rounded-[14px] flex items-center justify-center text-white shrink-0", brandColor)}
         >
-          <Logo className="w-6 h-6" />
+          {logo}
         </div>
         <div>
-          <h2 className="text-[16px] font-semibold text-ink">{title}</h2>
-          <p className="text-[12px] text-mute">Demo connection — no real API call</p>
+          <h2 className="text-[17px] font-semibold text-ink">{title}</h2>
+          <p className="text-[13px] text-mute mt-0.5 leading-relaxed">{description}</p>
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-[12px] font-medium text-mute">{inputLabel}</label>
+        <label className="text-[12px] font-medium text-body">{inputLabel}</label>
         <input
           type="text"
           value={value}
@@ -75,7 +70,8 @@ function ConnectCard({
           placeholder={placeholder}
           disabled={state === "loading" || state === "connected"}
           className={cn(
-            "w-full bg-surface rounded-[10px] px-3.5 py-2.5 text-[13px] text-ink outline-none border border-hair2 placeholder:text-faint",
+            "w-full bg-surface rounded-[10px] px-3.5 py-2.5 text-[13px] text-ink outline-none border border-hair2 placeholder:text-faint transition-all",
+            "focus:border-[#95BF47] focus:ring-1 focus:ring-[#95BF47]/20",
             (state === "loading" || state === "connected") && "opacity-60 cursor-not-allowed"
           )}
         />
@@ -85,7 +81,7 @@ function ConnectCard({
         onClick={onConnect}
         disabled={state === "loading" || state === "connected"}
         className={cn(
-          "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] text-[13px] font-semibold text-white transition-all",
+          "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] text-[14px] font-semibold text-white transition-all",
           state === "connected" ? "bg-success" : brandColor,
           (state === "loading" || state === "connected") && "opacity-90 cursor-not-allowed"
         )}
@@ -104,6 +100,17 @@ function ConnectCard({
           buttonText
         )}
       </button>
+
+      <div className="flex items-center gap-3 pt-1 text-[11px] text-faint">
+        <span className="inline-flex items-center gap-1">
+          <Lock className="w-3 h-3" />
+          Secure connection
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <ShieldCheck className="w-3 h-3" />
+          OAuth 2.0
+        </span>
+      </div>
     </div>
   )
 }
@@ -147,16 +154,19 @@ export default function ConnectAccountsPage() {
 
         <main className="flex-1 overflow-y-auto">
           <div className="px-4 lg:px-6 py-5 max-w-screen-xl mx-auto">
-            <div className="mb-6">
-              <h1 className="text-[20px] font-semibold text-ink tracking-tight">Connect Accounts</h1>
-              <p className="text-[13px] text-mute mt-1">Link your store and WhatsApp Business account to start automating.</p>
+            <div className="mb-8">
+              <h1 className="text-[22px] font-semibold text-ink tracking-tight">Connect Accounts</h1>
+              <p className="text-[14px] text-mute mt-1 max-w-xl">
+                Link your Shopify store and WhatsApp Business account to enable automated order confirmations, cart recovery, and customer support.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-[720px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-[760px]">
               <ConnectCard
-                logo={ShopifyLogo}
-                brandColor="bg-[#96bf48]"
+                logo={<Image src="/shopify-logo.svg" alt="Shopify" width={28} height={28} />}
+                brandColor="bg-[#95BF47]"
                 title="Connect Shopify"
+                description="Sync orders, abandoned carts, and customer data from your Shopify store."
                 inputLabel="Store URL"
                 placeholder="yourstore.myshopify.com"
                 buttonText="Connect Store"
@@ -167,9 +177,10 @@ export default function ConnectAccountsPage() {
               />
 
               <ConnectCard
-                logo={WhatsAppLogo}
+                logo={<WhatsAppLogo className="w-7 h-7" />}
                 brandColor="bg-[#25d366]"
                 title="Connect WhatsApp Business"
+                description="Send order confirmations, delivery updates, and cart recovery messages via WhatsApp."
                 inputLabel="Business Phone Number"
                 placeholder="+91 98765 43210"
                 buttonText="Connect WhatsApp"
