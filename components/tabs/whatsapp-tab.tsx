@@ -114,7 +114,12 @@ export function WhatsAppTab() {
       setHasMoreChats(false)
       return
     }
-    setAllChats(raw as BotSailorChat[])
+    const sorted = [...(raw as BotSailorChat[])].sort((a, b) => {
+      const ta = new Date(a.last_message_time ?? 0).getTime()
+      const tb = new Date(b.last_message_time ?? 0).getTime()
+      return tb - ta
+    })
+    setAllChats(sorted)
     setHasMoreChats(raw.length >= requestedLimit)
   }, [chatsData, requestedLimit])
 
@@ -146,7 +151,13 @@ export function WhatsAppTab() {
   const rawContacts = contactsData?.message ?? contactsData?.data ?? contactsData?.subscribers
   const contacts: BotSailorContact[] = Array.isArray(rawContacts) ? rawContacts : []
   const rawMessages = messagesData?.messages ?? messagesData?.data ?? messagesData?.message
-  const messages: Message[] = Array.isArray(rawMessages) ? rawMessages : []
+  const messages: Message[] = Array.isArray(rawMessages)
+    ? [...rawMessages].sort((a, b) => {
+        const ta = new Date((a as Record<string, unknown>).conversation_time as string ?? a.created_at ?? 0).getTime()
+        const tb = new Date((b as Record<string, unknown>).conversation_time as string ?? b.created_at ?? 0).getTime()
+        return ta - tb
+      })
+    : []
 
   // Error: only show when allChats is empty after load (not during pagination)
   const waError = allChats.length === 0 && !chatsLoading
@@ -167,8 +178,10 @@ export function WhatsAppTab() {
   const selectedPerson = selectedChat ?? selectedContact
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: "auto" })
+    }
+  }, [selectedPhone, messages])
 
   // Clear 24hr block when selecting a different chat
   useEffect(() => {
@@ -201,6 +214,20 @@ export function WhatsAppTab() {
         setSendError(errMsg || "Failed to send message. Please try again.")
       } else {
         setMessageInput("")
+        const optimistic: Message = {
+          id: `optimistic-${Date.now()}`,
+          sender_type: "agent",
+          direction: "outgoing",
+          message: messageInput.trim(),
+          text: messageInput.trim(),
+          created_at: new Date().toISOString(),
+          time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          status: "sent",
+        }
+        globalMutate(`/api/whatsapp/messages?phone_number=${encodeURIComponent(selectedPhone)}`, (prev: any) => {
+          if (!prev || !Array.isArray(prev.messages)) return prev
+          return { ...prev, messages: [...prev.messages, optimistic] }
+        }, false)
         globalMutate(`/api/whatsapp/messages?phone_number=${encodeURIComponent(selectedPhone)}`)
       }
     } catch {
