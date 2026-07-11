@@ -6,7 +6,7 @@ import {
   PhoneCall, ShoppingBag, TrendingUp, TrendingDown,
   CheckCircle2, XCircle, AlertCircle, Wallet,
   ArrowUpRight, ArrowDownLeft, IndianRupee, BadgeIndianRupee,
-  Zap, ShieldCheck, Store,
+  Zap, ShieldCheck, Store, Percent, MessageSquare, Clock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -275,6 +275,92 @@ export function OverviewTab() {
           isLoading={isLoading}
           formatValue={fmtRs}
         />
+      </div>
+
+      {/* ── Demo Performance Stats (safe to delete after demo) ───────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+        {[
+          {
+            label: "COD Orders Confirmed",
+            value: "142",
+            sub: "this month",
+            icon: CheckCircle2,
+            trend: "+12% vs last month",
+            iconColor: "text-success",
+            iconBg: "bg-success/10",
+          },
+          {
+            label: "COD Confirmation Rate",
+            value: "87%",
+            sub: "automated calls",
+            icon: Percent,
+            trend: "+5% vs last month",
+            iconColor: "text-teal",
+            iconBg: "bg-teal/10",
+          },
+          {
+            label: "Abandoned Carts Recovered",
+            value: "₹1,84,600",
+            sub: "this month",
+            icon: ShoppingBag,
+            trend: "+18% vs last month",
+            iconColor: "text-primary",
+            iconBg: "bg-primary/10",
+          },
+          {
+            label: "Cart Recovery Rate",
+            value: "19%",
+            sub: "of abandoned carts",
+            icon: TrendingUp,
+            iconColor: "text-info",
+            iconBg: "bg-info/10",
+          },
+          {
+            label: "Support Conversations Automated",
+            value: "312",
+            sub: "this week",
+            icon: MessageSquare,
+            iconColor: "text-wa",
+            iconBg: "bg-wa/10",
+          },
+          {
+            label: "Avg Response Time",
+            value: "8s",
+            sub: "AI replies",
+            icon: Clock,
+            iconColor: "text-warn",
+            iconBg: "bg-warn/10",
+          },
+          {
+            label: "Active WhatsApp Conversations",
+            value: "46",
+            sub: "right now",
+            icon: MessageCircle,
+            iconColor: "text-shopify",
+            iconBg: "bg-shopify/10",
+          },
+        ].map((stat, i) => (
+          <div
+            key={stat.label}
+            className="anim-fade-slide bg-card rounded-[14px] p-4 border border-hairline flex flex-col gap-2 hover:airbnb-shadow transition-shadow"
+            style={{ animationDelay: `${420 + i * 40}ms` }}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-medium text-mute uppercase tracking-wider leading-tight">{stat.label}</p>
+              <div className={cn("w-7 h-7 rounded-[8px] flex items-center justify-center", stat.iconBg)}>
+                <stat.icon className={cn("w-3.5 h-3.5", stat.iconColor)} />
+              </div>
+            </div>
+            <p className="text-[22px] font-semibold text-ink tracking-tight tabular">{stat.value}</p>
+            <p className="text-[11px] text-faint">{stat.sub}</p>
+            {stat.trend && (
+              <div className="inline-flex items-center gap-1 text-[10px] font-medium text-teal bg-teal/5 border border-teal/20 w-fit px-1.5 py-0.5 rounded-full">
+                <TrendingUp className="w-3 h-3" />
+                {stat.trend}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* ── Revenue Impact strip ─────────────────────────────────────────────── */}

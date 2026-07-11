@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import Image from "next/image"
+import Link from "next/link"
 import {
   LayoutDashboard,
   PhoneCall,
@@ -14,6 +15,7 @@ import {
   ChevronRight,
   X,
   LogOut,
+  Link2,
 } from "lucide-react"
 
 export type NavTab =
@@ -124,6 +126,14 @@ export function Sidebar({
                 onClick={() => handleSelect(item.id)}
               />
             ))}
+            {/* DEMO-ONLY: remove this link before production */}
+            <Link
+              href="/dashboard/connect"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-[13.5px] font-medium transition-all text-body hover:bg-surface hover:text-ink"
+            >
+              <Link2 className="w-4 h-4 shrink-0 text-faint" />
+              <span className="flex-1 text-left">Connect Accounts</span>
+            </Link>
           </div>
         </nav>
 
