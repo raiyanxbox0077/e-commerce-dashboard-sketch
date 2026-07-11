@@ -7,6 +7,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Wallet,
   ArrowUpRight, ArrowDownLeft, IndianRupee, BadgeIndianRupee,
   Zap, ShieldCheck, Store, Percent, MessageSquare, Clock,
+  MessageCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
