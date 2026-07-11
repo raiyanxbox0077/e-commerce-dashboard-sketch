@@ -14,12 +14,17 @@ export async function GET(req: Request) {
     .single()
 
   // Attempt to read the new column separately; if it fails (column missing), default gracefully
-  const { data: tenantExtra } = await supabase
-    .from('tenants')
-    .select('support_table_name')
-    .eq('user_id', user.id)
-    .single()
-    .catch(() => ({ data: null, error: null }))
+  let tenantExtra: { support_table_name?: string | null } | null = null
+  try {
+    const { data } = await supabase
+      .from('tenants')
+      .select('support_table_name')
+      .eq('user_id', user.id)
+      .single()
+    tenantExtra = data
+  } catch (e) {
+    tenantExtra = null
+  }
 
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') ?? '1')

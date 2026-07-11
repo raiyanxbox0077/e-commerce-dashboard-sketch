@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     order = await razorpay.orders.create({
       amount: Math.round(amount * 100), // paise
       currency: 'INR',
-      receipt: `w_${user.id.slice(0, 8)}_${Date.now().toString().slice(-8)}`,
+      receipt: `w_${user.id.slice(0, 8)}_${Date.now().toString().slice(-8)}`.slice(0, 40),
       notes: { user_id: user.id },
     })
   } catch (err: unknown) {

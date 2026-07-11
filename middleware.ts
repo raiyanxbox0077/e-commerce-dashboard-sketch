@@ -2,8 +2,23 @@ import { updateSession } from '@/lib/supabase/proxy'
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 
+function clearSessionAndRedirect(request: NextRequest) {
+  const redirectResponse = NextResponse.redirect(new URL('/auth/login', request.url))
+  request.cookies.getAll().forEach((cookie) => {
+    if (cookie.name.startsWith('sb-') && cookie.name.includes('auth-token')) {
+      redirectResponse.cookies.delete(cookie.name)
+    }
+  })
+  return redirectResponse
+}
+
 export async function middleware(request: NextRequest) {
-  const response = await updateSession(request)
+  let response: NextResponse
+  try {
+    response = await updateSession(request)
+  } catch (e) {
+    return clearSessionAndRedirect(request)
+  }
 
   // Create a supabase client to check auth
   const supabase = createServerClient(
@@ -19,9 +34,13 @@ export async function middleware(request: NextRequest) {
     },
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (e) {
+    return clearSessionAndRedirect(request)
+  }
 
   const { pathname } = request.nextUrl
 
