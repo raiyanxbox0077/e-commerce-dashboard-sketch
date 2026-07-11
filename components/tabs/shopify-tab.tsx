@@ -12,6 +12,30 @@ import { useTenant } from "@/hooks/use-tenant"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
+// ─── Agent Toggle Switch ─────────────────────────────────────────────────────
+
+function AgentToggle({ on, onToggle, disabled }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={disabled}
+      aria-label={on ? "Turn agent off" : "Turn agent on"}
+      className={cn(
+        "relative inline-flex items-center w-9 h-5 rounded-full transition-colors shrink-0",
+        on ? "bg-success" : "bg-hair2",
+        disabled && "opacity-50 cursor-not-allowed"
+      )}
+    >
+      <span
+        className={cn(
+          "absolute left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform",
+          on && "translate-x-4"
+        )}
+      />
+    </button>
+  )
+}
+
 // ─── Run Mini Panel (fetches call detail for a RUN_ID inline) ────────────────
 
 interface RunMiniPanelProps { runId: string; onClose: () => void }
@@ -718,8 +742,17 @@ const SUB_TABS: [ShopifySubTab, string][] = [
   ["reviews", "Reviews"],
 ]
 
+const AGENT_LABEL: Record<ShopifySubTab, string> = {
+  cod: "COD",
+  cart: "Cart",
+  support: "Support",
+  reviews: "Reviews",
+}
+
+const AGENT_DEFAULTS: Record<ShopifySubTab, boolean> = { cod: true, cart: true, support: true, reviews: true }
+
 export function ShopifyTab() {
-  const { tenant } = useTenant()
+  const { tenant, mutate: mutateTenant } = useTenant()
   const [subTab, setSubTab] = useState<ShopifySubTab>("cod")
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
@@ -730,6 +763,31 @@ export function ShopifyTab() {
   const [selectedCart, setSelectedCart]     = useState<CartItem | null>(null)
   const [selectedSupport, setSelectedSupport] = useState<SupportTicket | null>(null)
   const [selectedReview, setSelectedReview]   = useState<Review | null>(null)
+  const [toggling, setToggling] = useState(false)
+
+  // Agent toggles from tenant config (defaults: all ON)
+  const agentToggles: Record<ShopifySubTab, boolean> = { ...AGENT_DEFAULTS, ...(tenant?.agent_toggles ?? {}) }
+
+  async function handleToggleAgent(key: ShopifySubTab) {
+    const newVal = !agentToggles[key]
+    const newToggles = { ...agentToggles, [key]: newVal }
+    const snap = { ...agentToggles }
+    setToggling(true)
+    mutateTenant?.(prev => ({ ...prev, agent_toggles: newToggles }), false)
+    try {
+      const res = await fetch('/api/tenant', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_toggles: newToggles }),
+      })
+      if (!res.ok) throw new Error('Update failed')
+      mutateTenant?.()
+    } catch {
+      mutateTenant?.(prev => ({ ...prev, agent_toggles: snap }), false)
+    } finally {
+      setToggling(false)
+    }
+  }
 
   // COD: filter by "order confirm" column — confirmed=true, rejected=false, pending=null
   const codStatusParam = codStatusFilter === "confirmed" ? "&order_confirm=true"
@@ -771,6 +829,17 @@ export function ShopifyTab() {
 
   return (
     <div className="space-y-4">
+      {/* Agent toggles */}
+      <div className="bg-card rounded-2xl hairline p-4 flex flex-wrap items-center gap-4">
+        <span className="text-[13px] font-semibold text-ink mr-2">Agents</span>
+        {(SUB_TABS.map(([id, label]) => id) as ShopifySubTab[]).map(key => (
+          <div key={key} className="flex items-center gap-2">
+            <span className="text-[12px] font-medium text-mute">{AGENT_LABEL[key]}</span>
+            <AgentToggle on={agentToggles[key]} onToggle={() => handleToggleAgent(key)} disabled={toggling} />
+          </div>
+        ))}
+      </div>
+
       {/* Sub-tab switcher */}
       <div className="bg-card rounded-2xl hairline px-2 py-2 inline-flex gap-1 flex-wrap">
         {SUB_TABS.map(([id, label]) => (

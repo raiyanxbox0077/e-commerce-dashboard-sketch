@@ -14,6 +14,7 @@ export interface Tenant {
   shopify_admin_token: string | null
   wallet_balance: number
   plan: string
+  agent_toggles?: Record<string, boolean> | null
 }
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
