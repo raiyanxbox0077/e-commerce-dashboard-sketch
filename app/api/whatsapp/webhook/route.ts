@@ -4,76 +4,163 @@ import { NextResponse } from 'next/server'
 type Obj = Record<string, unknown>
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 
+/**
+ * Normalize a phone number to digits-only with country code, no +, no
+ * spaces, no dashes (e.g. "919870209779").  Strips everything non-digit.
+ * If the number starts with a single leading 0 (local format without
+ * country code) we can't reliably infer the country code, so we leave it
+ * as-is (digits-only) — BotSailor already sends with country code.
+ */
+function normalizePhone(input: string): string {
+  let p = input.replace(/[^\d]/g, '') // digits only
+  // Remove a single leading 0 — but only if there are more than 10 digits
+  // after it (i.e. it was a domestic prefix, not part of the number itself).
+  if (p.length > 10 && p.startsWith('0')) p = p.slice(1)
+  return p
+}
+
+/**
+ * Infer a message type from the content of user_message for incoming
+ * payloads that lack an explicit message_type field.
+ * BotSailor sometimes sends media as a URL in user_message.
+ */
+function inferMessageType(text: string): string {
+  const lower = text.toLowerCase().trim()
+  // Only treat as media if the entire message IS a URL (very short text
+  // around it would be a caption, not just a URL).
+  if (/^https?:\/\/\S+\.(jpg|jpeg|png|webp|gif)(\?\S*)?$/i.test(lower)) return 'image'
+  if (/^https?:\/\/\S+\.(pdf|doc|docx)(\?\S*)?$/i.test(lower)) return 'document'
+  if (/^https?:\/\/\S+\.(mp3|ogg|m4a|aac|opus)(\?\S*)?$/i.test(lower)) return 'audio'
+  if (/^https?:\/\/\S+\.(mp4|mov|avi|webm)(\?\S*)?$/i.test(lower)) return 'video'
+  return 'text'
+}
+
+const MAX_MESSAGE_LEN = 4000
+
 export async function POST(req: Request) {
-  // Read the raw body as text first so we can log it regardless of whether
-  // it parses as JSON.  BotSailor's docs may differ from the real payload —
-  // this log is the single source of truth for debugging delivery issues.
-  let rawText = ''
+  // The entire handler is wrapped so no error ever escapes as a non-200.
   try {
-    rawText = await req.text()
-  } catch {
-    rawText = '[unreadable body]'
-  }
-  console.log('[whatsapp-webhook] raw body:', rawText)
+    // ── Read & log the raw body ──────────────────────────────────────
+    let rawText = ''
+    try {
+      rawText = await req.text()
+    } catch {
+      rawText = '[unreadable body]'
+    }
+    console.log('[whatsapp-webhook] raw body:', rawText)
 
-  let payload: Obj = {}
-  try {
-    payload = JSON.parse(rawText)
-    if (!payload || typeof payload !== 'object') payload = {}
-  } catch {
-    // Can't parse — still return 200 so BotSailor doesn't mark the URL unhealthy.
-    console.log('[whatsapp-webhook] body is not valid JSON, skipping')
-    return NextResponse.json({ ok: true, skipped: true, reason: 'invalid JSON' })
-  }
-  console.log('[whatsapp-webhook] parsed payload:', JSON.stringify(payload))
+    // ── Parse JSON ───────────────────────────────────────────────────
+    let payload: Obj = {}
+    try {
+      payload = JSON.parse(rawText)
+      if (!payload || typeof payload !== 'object') payload = {}
+    } catch {
+      console.log('[whatsapp-webhook] body is not valid JSON, skipping')
+      // No raw_log table exists; console is our audit trail.
+      return NextResponse.json({ ok: true, skipped: true, reason: 'invalid JSON' })
+    }
+    console.log('[whatsapp-webhook] parsed payload:', JSON.stringify(payload))
 
-  try {
-    // BotSailor's REAL outgoing-webhook payload (confirmed from live logs):
-    //   {
-    //     "whatsapp_bot_name": "Oramax",
-    //     "whatsapp_bot_id": 425928,
-    //     "subscriber_id": "919870209779-425928",
-    //     "wa_message_id": "wamid.HBgM…",
-    //     "label_names": "",
-    //     "first_name": "Raiyan Patel",
-    //     "chat_id": "919870209779",
-    //     "user_message": "Hello",
-    //     "whatsapp_bot_username": "+91 90821 45528"
-    //   }
-    //
-    // Field mappings (BotSailor → whatsapp_messages):
-    //   phone_number  ← chat_id
-    //   message_text  ← user_message
-    //   sender_name   ← first_name
-    //   subscriber_id ← subscriber_id (as-is, e.g. "919870209779-425928")
-    //   direction     ← hardcoded 'outbound' (BotSailor doesn't send this)
-    //   message_type  ← hardcoded 'text' (BotSailor doesn't send this)
-    //   raw_payload   ← full original JSON body as-is
-    const subscriberId = str(payload.subscriber_id) || null
-    const phoneNumber = str(payload.chat_id)
-    const messageText = str(payload.user_message)
-    const senderName = str(payload.first_name) || null
-    const messageType = 'text'
-    const direction = 'outbound'
+    // ── Shape detection ─────────────────────────────────────────────
+    // 1. INCOMING (relayed via n8n): chat_id + user_message
+    // 2. OUTBOUND (direct from BotSailor): whatsapp_number + message_text
+    const hasIncomingShape = Boolean(str(payload.chat_id)) && Boolean(str(payload.user_message))
+    const hasOutboundShape = Boolean(str(payload.whatsapp_number)) && Boolean(str(payload.message_text))
 
-    if (!phoneNumber) {
-      console.log('[whatsapp-webhook] missing chat_id, skipping')
-      return NextResponse.json({ ok: true, skipped: true, reason: 'missing chat_id' })
+    if (!hasIncomingShape && !hasOutboundShape) {
+      console.warn('[whatsapp-webhook] UNKNOWN_PAYLOAD_SHAPE:', JSON.stringify(payload))
+      return NextResponse.json({ ok: true, skipped: true, reason: 'unknown_payload_shape' })
     }
 
-    // Insert into whatsapp_messages — wrapped in try/catch so a Supabase
-    // failure never blocks the 200 response BotSailor expects.
+    // ── wa_message_id for duplicate prevention ──────────────────────
+    const waMessageId = str(payload.wa_message_id) || null
+    const rawPayloadForInsert: Obj = { ...payload }
+    if (waMessageId) rawPayloadForInsert._wa_message_id = waMessageId
+
+    if (waMessageId) {
+      try {
+        const admin = createAdminClient()
+        const { data: existing } = await admin
+          .from('whatsapp_messages')
+          .select('id')
+          .contains('raw_payload', { _wa_message_id: waMessageId })
+          .limit(1)
+        if (existing && existing.length > 0) {
+          console.log('[whatsapp-webhook] duplicate wa_message_id, skipping:', waMessageId)
+          return NextResponse.json({ ok: true, skipped: true, reason: 'duplicate' })
+        }
+      } catch (dupErr) {
+        console.error('[whatsapp-webhook] duplicate check failed:', dupErr)
+      }
+    }
+
+    // ── Build the insert row ────────────────────────────────────────
+    let insertRow: Record<string, unknown>
+
+    if (hasIncomingShape) {
+      // ── INCOMING shape (relayed via n8n) ──
+      const rawMessage = str(payload.user_message)
+      const trimmedMessage = rawMessage.trim()
+      const phoneNumber = normalizePhone(str(payload.chat_id))
+
+      // Empty message guard — skip insert but still return 200.
+      if (!trimmedMessage || !phoneNumber) {
+        console.log('[whatsapp-webhook] incoming: empty message or phone, skipping')
+        return NextResponse.json({ ok: true, skipped: true, reason: 'empty message or phone' })
+      }
+
+      const messageType = inferMessageType(trimmedMessage)
+      const truncatedMessage = trimmedMessage.length > MAX_MESSAGE_LEN
+        ? trimmedMessage.slice(0, MAX_MESSAGE_LEN)
+        : trimmedMessage
+
+      insertRow = {
+        subscriber_id: str(payload.subscriber_id) || null,
+        phone_number: phoneNumber,
+        sender_name: str(payload.first_name) || null,
+        message_text: truncatedMessage,
+        message_type: messageType,
+        direction: 'inbound',
+        created_at: new Date().toISOString(),
+        raw_payload: rawPayloadForInsert,
+      }
+      console.log('[whatsapp-webhook] incoming:', insertRow.phone_number, '→', trimmedMessage.slice(0, 60))
+    } else {
+      // ── OUTBOUND shape (direct from BotSailor) ──
+      const rawDirection = str(payload.direction)
+      const direction = rawDirection === 'incoming' ? 'inbound' : 'outbound'
+      const time = str(payload.time)
+      const rawMessage = str(payload.message_text)
+      const trimmedMessage = rawMessage.trim()
+      const phoneNumber = normalizePhone(str(payload.whatsapp_number))
+
+      // Empty message guard
+      if (!trimmedMessage || !phoneNumber) {
+        console.log('[whatsapp-webhook] outbound: empty message or phone, skipping')
+        return NextResponse.json({ ok: true, skipped: true, reason: 'empty message or phone' })
+      }
+
+      const truncatedMessage = trimmedMessage.length > MAX_MESSAGE_LEN
+        ? trimmedMessage.slice(0, MAX_MESSAGE_LEN)
+        : trimmedMessage
+
+      insertRow = {
+        subscriber_id: str(payload.subscriber_id) || null,
+        phone_number: phoneNumber,
+        sender_name: direction === 'outbound' ? 'Agent' : (str(payload.first_name) || null),
+        message_text: truncatedMessage,
+        message_type: str(payload.message_type) || 'text',
+        direction,
+        created_at: time ? new Date(time).toISOString() : new Date().toISOString(),
+        raw_payload: rawPayloadForInsert,
+      }
+      console.log('[whatsapp-webhook] outbound:', insertRow.phone_number, '→', trimmedMessage.slice(0, 60))
+    }
+
+    // ── Insert into whatsapp_messages ────────────────────────────────
     try {
       const admin = createAdminClient()
-      const { error } = await admin.from('whatsapp_messages').insert({
-        subscriber_id: subscriberId,
-        phone_number: phoneNumber,
-        sender_name: senderName,
-        message_text: messageText,
-        message_type: messageType,
-        direction,
-        raw_payload: payload,
-      })
+      const { error } = await admin.from('whatsapp_messages').insert(insertRow)
       if (error) {
         console.error('[whatsapp-webhook] insert error:', error)
       }
@@ -81,12 +168,11 @@ export async function POST(req: Request) {
       console.error('[whatsapp-webhook] insert exception:', insertErr)
     }
 
-    // Always return 200 — a slow/failing webhook response can cause BotSailor
-    // to stop retrying or mark the URL unhealthy.
+    // Always return 200.
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('[whatsapp-webhook] unexpected error:', err)
+    // Top-level safety net — nothing ever escapes as non-200.
+    console.error('[whatsapp-webhook] FATAL unexpected error:', err)
     return NextResponse.json({ ok: true })
   }
 }
-
