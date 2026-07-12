@@ -28,31 +28,37 @@ export async function POST(req: Request) {
   console.log('[whatsapp-webhook] parsed payload:', JSON.stringify(payload))
 
   try {
-    // BotSailor payload:
-    //   subscriber_id  – string
-    //   whatsapp_number – recipient phone (digits, country code, no +)
-    //   message_text    – the message body
-    //   message_type    – text|image|document|video|audio|location
-    //   direction       – "incoming" | "outgoing"
-    //   time            – ISO-8601 timestamp
+    // BotSailor's REAL outgoing-webhook payload (confirmed from live logs):
+    //   {
+    //     "whatsapp_bot_name": "Oramax",
+    //     "whatsapp_bot_id": 425928,
+    //     "subscriber_id": "919870209779-425928",
+    //     "wa_message_id": "wamid.HBgM…",
+    //     "label_names": "",
+    //     "first_name": "Raiyan Patel",
+    //     "chat_id": "919870209779",
+    //     "user_message": "Hello",
+    //     "whatsapp_bot_username": "+91 90821 45528"
+    //   }
+    //
+    // Field mappings (BotSailor → whatsapp_messages):
+    //   phone_number  ← chat_id
+    //   message_text  ← user_message
+    //   sender_name   ← first_name
+    //   subscriber_id ← subscriber_id (as-is, e.g. "919870209779-425928")
+    //   direction     ← hardcoded 'outbound' (BotSailor doesn't send this)
+    //   message_type  ← hardcoded 'text' (BotSailor doesn't send this)
+    //   raw_payload   ← full original JSON body as-is
     const subscriberId = str(payload.subscriber_id) || null
-    const phoneNumber = str(payload.whatsapp_number) || null
-    const messageText = str(payload.message_text)
-    const messageType = str(payload.message_type) || 'text'
-    const rawDirection = str(payload.direction)
-    const time = str(payload.time)
+    const phoneNumber = str(payload.chat_id)
+    const messageText = str(payload.user_message)
+    const senderName = str(payload.first_name) || null
+    const messageType = 'text'
+    const direction = 'outbound'
 
-    // Map BotSailor direction values to our internal DB convention.
-    // Main uses inbound/outbound in the DB (mapped from BotSailor's incoming/outgoing).
-    const direction = rawDirection === 'incoming' ? 'inbound' : 'outbound'
-
-    // BotSailor does not send sender_name.  For outgoing messages we label
-    // as Agent; for incoming we leave null.
-    const senderName = direction === 'outbound' ? 'Agent' : null
-
-    if (!phoneNumber || !messageText) {
-      console.log('[whatsapp-webhook] missing required fields, skipping')
-      return NextResponse.json({ ok: true, skipped: true, reason: 'missing required fields' })
+    if (!phoneNumber) {
+      console.log('[whatsapp-webhook] missing chat_id, skipping')
+      return NextResponse.json({ ok: true, skipped: true, reason: 'missing chat_id' })
     }
 
     // Insert into whatsapp_messages — wrapped in try/catch so a Supabase
@@ -66,7 +72,6 @@ export async function POST(req: Request) {
         message_text: messageText,
         message_type: messageType,
         direction,
-        created_at: time ? new Date(time).toISOString() : new Date().toISOString(),
         raw_payload: payload,
       })
       if (error) {
