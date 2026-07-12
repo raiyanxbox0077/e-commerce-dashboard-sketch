@@ -309,7 +309,8 @@ export function WhatsAppTab() {
     for (const [phone, msgs] of grouped) {
       const sorted = [...msgs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       const latest = sorted[0]
-      const nameParts = splitName(latest.sender_name ?? "")
+      const displayName = latest.sender_name ?? phone
+      const nameParts = splitName(displayName)
       chats.push({
         id: phone,
         subscriber_id: Number(latest.subscriber_id) || undefined,
@@ -682,7 +683,9 @@ export function WhatsAppTab() {
               })()}
               <div className="flex-1">
                 <p className="text-[14px] font-semibold text-ink">
-                  {selectedPerson.first_name} {selectedPerson.last_name}
+                  {selectedPerson.first_name || selectedPerson.last_name
+                    ? `${selectedPerson.first_name ?? ""} ${selectedPerson.last_name ?? ""}`.trim()
+                    : selectedPhone}
                 </p>
                 <p className="text-[11px] text-mute">{selectedPhone}</p>
               </div>
