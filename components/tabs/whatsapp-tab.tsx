@@ -309,7 +309,7 @@ export function WhatsAppTab() {
     for (const [phone, msgs] of grouped) {
       const sorted = [...msgs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       const latest = sorted[0]
-      const displayName = latest.sender_name ?? phone
+      const displayName = latest.sender_name || phone
       const nameParts = splitName(displayName)
       chats.push({
         id: phone,
