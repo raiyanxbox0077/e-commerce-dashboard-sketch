@@ -5,6 +5,13 @@
  * it into Supabase `whatsapp_messages` so the realtime-driven dashboard
  * has historical chats on first load.
  *
+ * Correct contact mapping:
+ * - Subscriber list is the source of truth for real names + phone numbers.
+ * - `sender_name` is ALWAYS the real subscriber name from the list.
+ * - `direction` distinguishes inbound (customer) vs outbound (bot/agent).
+ * - `phone_number` is the real customer phone; `whatsapp_bot_subscriber_subscriber_id`
+ *   is used as a fallback and parsed as `{phone}-{bot_id}`.
+ *
  * Run once with:
  *   SUPABASE_URL=https://iaisgphpjgwmrzkffvgu.supabase.co \
  *   SUPABASE_SERVICE_ROLE_KEY=<key> \
@@ -84,24 +91,24 @@ function parseContent(content: unknown): { text: string; type: string } {
 }
 
 interface BotSailorSubscriber {
-  subscriber_id?: number
+  subscriber_id?: number | string
   chat_id?: string
   first_name?: string
   last_name?: string
   phone?: string
+  whatsapp_bot_subscriber_subscriber_id?: string
 }
 
 interface BotSailorMessage {
   id?: string | number
   sender?: string
   sender_type?: string
-  agent_name?: string
   message?: unknown
   message_content?: unknown
   conversation_time?: string
   created_at?: string
-  message_status?: string
-  status?: string
+  whatsapp_bot_subscriber_subscriber_id?: string
+  whatsapp_bot_id?: string | number
 }
 
 interface Tenant {
@@ -135,16 +142,54 @@ async function botSailorRequest<T>(url: string): Promise<T | null> {
   return data as T
 }
 
-async function getSubscribers(apiKey: string, phoneId: string): Promise<BotSailorSubscriber[]> {
-  const params = new URLSearchParams({ apiToken: apiKey, phone_number_id: phoneId, limit: '100', offset: '0', orderBy: '1' })
-  const data = await botSailorRequest<{ message?: BotSailorSubscriber[] }>(
-    `${BOTSAILOR_BASE}/whatsapp/subscriber/list?${params}`
-  )
-  return Array.isArray(data?.message) ? data.message : []
+function extractPhoneFromSubscriberId(raw?: string | null): string | null {
+  if (!raw) return null
+  // Format: "{phone_number}-{whatsapp_bot_id}"
+  const dashIdx = raw.indexOf('-')
+  if (dashIdx > 0) return raw.slice(0, dashIdx)
+  return raw
 }
 
-async function getConversation(apiKey: string, phoneId: string, phoneNumber: string): Promise<BotSailorMessage[]> {
-  const params = new URLSearchParams({ apiToken: apiKey, phone_number_id: phoneId, phone_number: phoneNumber, limit: '200', offset: '0' })
+async function getSubscribers(apiKey: string, phoneId: string): Promise<BotSailorSubscriber[]> {
+  const all: BotSailorSubscriber[] = []
+  const limit = 100
+  let offset = 0
+
+  while (true) {
+    const params = new URLSearchParams({
+      apiToken: apiKey,
+      phone_number_id: phoneId,
+      limit: String(limit),
+      offset: String(offset),
+      orderBy: '1',
+    })
+    const data = await botSailorRequest<{ message?: BotSailorSubscriber[] }>(
+      `${BOTSAILOR_BASE}/whatsapp/subscriber/list?${params}`
+    )
+    const batch = Array.isArray(data?.message) ? data.message : []
+    if (batch.length === 0) break
+    all.push(...batch)
+    if (batch.length < limit) break
+    offset += limit
+  }
+
+  return all
+}
+
+async function getConversationPage(
+  apiKey: string,
+  phoneId: string,
+  phoneNumber: string,
+  offset: number,
+  limit: number
+): Promise<BotSailorMessage[]> {
+  const params = new URLSearchParams({
+    apiToken: apiKey,
+    phone_number_id: phoneId,
+    phone_number: phoneNumber,
+    limit: String(limit),
+    offset: String(offset),
+  })
   const data = await botSailorRequest<{ message?: unknown }>(
     `${BOTSAILOR_BASE}/whatsapp/get/conversation?${params}`
   )
@@ -167,10 +212,29 @@ async function getConversation(apiKey: string, phoneId: string, phoneNumber: str
   return messagesArray
 }
 
+async function getAllConversation(
+  apiKey: string,
+  phoneId: string,
+  phoneNumber: string
+): Promise<BotSailorMessage[]> {
+  const all: BotSailorMessage[] = []
+  const limit = 200
+  let offset = 0
+
+  while (true) {
+    const page = await getConversationPage(apiKey, phoneId, phoneNumber, offset, limit)
+    if (page.length === 0) break
+    all.push(...page)
+    if (page.length < limit) break
+    offset += limit
+  }
+
+  return all
+}
+
 function normaliseMessage(
   msg: BotSailorMessage,
-  phoneNumber: string,
-  subscriberName: string
+  subscriber: BotSailorSubscriber
 ): InsertRow | null {
   const content = msg.message_content ?? msg.message
   const { text, type } = parseContent(content)
@@ -181,15 +245,26 @@ function normaliseMessage(
   const sender = msg.sender ?? msg.sender_type ?? ''
   const isInbound = sender === 'user' || sender === 'subscriber'
   const direction = isInbound ? 'inbound' : 'outbound'
-  const senderName = isInbound ? subscriberName : (msg.agent_name ?? 'Agent')
+
+  // Real subscriber name from the subscriber list is the source of truth
+  const subscriberName = `${subscriber.first_name ?? ''} ${subscriber.last_name ?? ''}`.trim()
+    || subscriber.phone
+    || subscriber.chat_id
+    || 'Unknown'
+
+  // Real customer phone: prefer subscriber list, fallback to parsing whatsapp_bot_subscriber_subscriber_id
+  const phoneFromSubscriberId = extractPhoneFromSubscriberId(
+    msg.whatsapp_bot_subscriber_subscriber_id ?? subscriber.whatsapp_bot_subscriber_subscriber_id
+  )
+  const phoneNumber = subscriber.phone ?? subscriber.chat_id ?? phoneFromSubscriberId
 
   const ts = msg.conversation_time ?? msg.created_at
   const createdAt = ts ? new Date(ts).toISOString() : new Date().toISOString()
 
   return {
-    subscriber_id: msg.id ? String(msg.id) : null,
-    phone_number: phoneNumber,
-    sender_name: senderName,
+    subscriber_id: subscriber.subscriber_id ? String(subscriber.subscriber_id) : null,
+    phone_number: phoneNumber ?? null,
+    sender_name: subscriberName,
     message_text: text,
     message_type: type,
     direction,
@@ -228,6 +303,7 @@ async function main() {
 
   let totalInserted = 0
   let totalSkipped = 0
+  const distinctPhones = new Set<string>()
 
   for (const tenant of eligibleTenants) {
     console.log(`\nProcessing tenant ${tenant.id}`)
@@ -235,18 +311,18 @@ async function main() {
     console.log(`  ${subscribers.length} subscribers`)
 
     for (const sub of subscribers) {
-      const phoneNumber = sub.chat_id ?? sub.phone
+      const phoneNumber = sub.phone ?? sub.chat_id
       if (!phoneNumber) {
         console.log('  skipping subscriber with no phone number')
         continue
       }
+      distinctPhones.add(phoneNumber)
 
-      const subscriberName = `${sub.first_name ?? ''} ${sub.last_name ?? ''}`.trim() || phoneNumber
-      const conversation = await getConversation(tenant.botsailor_api_key!, tenant.botsailor_phone_id!, phoneNumber)
+      const conversation = await getAllConversation(tenant.botsailor_api_key!, tenant.botsailor_phone_id!, phoneNumber)
 
       const rows: InsertRow[] = []
       for (const msg of conversation) {
-        const row = normaliseMessage(msg, phoneNumber, subscriberName)
+        const row = normaliseMessage(msg, sub)
         if (row) rows.push(row)
       }
 
@@ -264,6 +340,7 @@ async function main() {
   }
 
   console.log(`\nBackfill complete: ${totalInserted} inserted, ${totalSkipped} skipped`)
+  console.log(`Distinct real phone numbers: ${distinctPhones.size}`)
 }
 
 main().catch(err => {
