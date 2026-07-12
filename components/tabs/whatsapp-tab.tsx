@@ -46,6 +46,7 @@ interface Message {
   created_at?: string
   time?: string
   status?: string
+  sender_name?: string | null
 }
 
 interface DbMessage {
@@ -211,6 +212,7 @@ function dbToUiMessage(row: DbMessage): Message {
     text: row.message_text ?? "",
     created_at: row.created_at,
     status: isInbound ? undefined : "sent",
+    sender_name: row.sender_name,
   }
 }
 
@@ -309,7 +311,11 @@ export function WhatsAppTab() {
     for (const [phone, msgs] of grouped) {
       const sorted = [...msgs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       const latest = sorted[0]
-      const displayName = latest.sender_name || phone
+      // Use the most recent INBOUND message's sender_name for the contact
+      // display name, so the chat list shows the customer's real name instead
+      // of "Agent".  Fall back to phone if no inbound message exists yet.
+      const latestInbound = sorted.find(m => m.direction === "inbound")
+      const displayName = latestInbound?.sender_name || phone
       const nameParts = splitName(displayName)
       chats.push({
         id: phone,
@@ -710,9 +716,10 @@ export function WhatsAppTab() {
                 </div>
               ) : messages.map((msg, i) => {
                 const rawMsg = (msg as unknown) as Record<string, unknown>
-                const isUser = rawMsg.sender === "user" || rawMsg.sender === "subscriber"
+                const isInbound = rawMsg.sender === "user" || rawMsg.sender === "subscriber"
                   || msg.sender_type === "user" || msg.sender_type === "subscriber"
                   || msg.direction === "incoming"
+                const isOutbound = !isInbound
                 const raw = msg.message ?? msg.text ?? ""
                 const text = typeof raw === "string" ? raw
                   : typeof raw === "object" && raw !== null ? JSON.stringify(raw)
@@ -721,23 +728,27 @@ export function WhatsAppTab() {
                 const time = rawTime
                   ? new Date(rawTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
                   : (msg.time ?? "")
+                // Label: show customer name for inbound, "Agent" for outbound
+                const labelName = isInbound
+                  ? (msg.sender_name || "Customer")
+                  : "Agent"
                 return (
-                  <div key={msg.id ?? i} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+                  <div key={msg.id ?? i} className={cn("flex", isInbound ? "justify-start" : "justify-end")}>
                     <div className={cn(
                       "max-w-[75%] px-3.5 py-2.5 rounded-[14px]",
-                      isUser
-                        ? "bg-ink text-white rounded-br-[4px] dark:bg-[#1f1f1f] dark:text-white"
-                        : "bg-card text-ink rounded-bl-[4px] border border-hairline dark:bg-[#1f1f1f] dark:text-white"
+                      isInbound
+                        ? "bg-card text-ink rounded-bl-[4px] border border-hairline dark:bg-[#1f1f1f] dark:text-white"
+                        : "bg-primary text-white rounded-br-[4px] dark:bg-[#1f1f1f] dark:text-white"
                     )}>
-                      {!isUser && (
-                        <p className="text-[10px] font-semibold text-primary mb-1 uppercase tracking-wider">Bot / Agent</p>
-                      )}
+                      <p className="text-[10px] font-semibold mb-1 uppercase tracking-wider truncate">
+                        <span className={isInbound ? "text-mute dark:text-white/60" : "text-white/70"}>{labelName}</span>
+                      </p>
                       <p className="text-[13px] leading-relaxed dark:text-white">{text}</p>
-                      <div className={cn("flex items-center gap-1 mt-1", isUser ? "justify-end" : "justify-start")}>
-                        <span className={cn("text-[10px]", isUser ? "text-white/60" : "text-faint dark:text-white/60")}>{time}</span>
-                        {isUser && msg.status === "read"
+                      <div className={cn("flex items-center gap-1 mt-1", isOutbound ? "justify-end" : "justify-start")}>
+                        <span className={cn("text-[10px]", isOutbound ? "text-white/60" : "text-faint dark:text-white/60")}>{time}</span>
+                        {isOutbound && msg.status === "read"
                           ? <CheckCheck className="w-3 h-3 text-teal" />
-                          : isUser ? <Check className="w-3 h-3 text-white/60" /> : null}
+                          : isOutbound ? <Check className="w-3 h-3 text-white/60" /> : null}
                       </div>
                     </div>
                   </div>
