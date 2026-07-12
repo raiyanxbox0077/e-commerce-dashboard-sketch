@@ -46,6 +46,7 @@ interface Message {
   created_at?: string
   time?: string
   status?: string
+  buttons?: string[]
 }
 
 interface DbMessage {
@@ -721,6 +722,9 @@ export function WhatsAppTab() {
                 const time = rawTime
                   ? new Date(rawTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
                   : (msg.time ?? "")
+                const msgButtons = Array.isArray((rawMsg as Record<string, unknown>).buttons)
+                  ? (rawMsg as Record<string, unknown>).buttons as string[]
+                  : (msg.buttons ?? [])
                 return (
                   <div key={msg.id ?? i} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
                     <div className={cn(
@@ -733,6 +737,23 @@ export function WhatsAppTab() {
                         <p className="text-[10px] font-semibold text-primary mb-1 uppercase tracking-wider">Bot / Agent</p>
                       )}
                       <p className="text-[13px] leading-relaxed dark:text-white">{text}</p>
+                      {msgButtons.length > 0 && (
+                        <div className="mt-2 -mx-1 space-y-1.5">
+                          {msgButtons.map((btn, bi) => (
+                            <div
+                              key={bi}
+                              className={cn(
+                                "w-full text-center text-[12px] font-medium py-2 rounded-[8px] border select-none",
+                                isUser
+                                  ? "bg-white/10 border-white/20 text-white/90"
+                                  : "bg-surface border-hair2 text-mute dark:bg-white/5 dark:text-white/80"
+                              )}
+                            >
+                              {btn}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className={cn("flex items-center gap-1 mt-1", isUser ? "justify-end" : "justify-start")}>
                         <span className={cn("text-[10px]", isUser ? "text-white/60" : "text-faint dark:text-white/60")}>{time}</span>
                         {isUser && msg.status === "read"

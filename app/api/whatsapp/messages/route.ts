@@ -66,24 +66,37 @@ export async function GET(req: Request) {
   const asObj = (v: unknown): Obj | null => (v && typeof v === 'object' ? v as Obj : null)
   const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 
-  // Extract display text + type from a single WhatsApp message-like node.
-  // Handles both outbound send payloads (bot/agent) and inbound webhook message nodes.
-  function extractWaNode(node: Obj): { text: string; type: string } {
+  // Extract display text + type (+ optional buttons) from a single WhatsApp
+  // message-like node.  Handles both outbound send payloads (bot/agent) and
+  // inbound webhook message nodes.
+  function extractWaNode(node: Obj): { text: string; type: string; buttons?: string[] } {
     // Plain text
     const textObj = asObj(node.text)
     if (textObj && str(textObj.body)) return { text: str(textObj.body), type: 'text' }
     if (str(node.text)) return { text: str(node.text), type: 'text' }
 
-    // Interactive: outbound prompt has body.text; inbound reply has button_reply/list_reply
+    // Interactive: outbound prompt has body.text + action.buttons;
+    // inbound reply has button_reply/list_reply
     const it = asObj(node.interactive)
     if (it) {
-      const body = asObj(it.body)
-      if (body && str(body.text)) return { text: str(body.text), type: 'interactive' }
+      // Outbound interactive button message — extract button titles
+      if (str(it.type) === 'button') {
+        const body = asObj(it.body)
+        const action = asObj(it.action)
+        const buttons: string[] = Array.isArray(action?.buttons)
+          ? (action.buttons as Obj[]).map((b) => str(asObj(asObj(b)?.reply)?.title)).filter(Boolean)
+          : []
+        return { text: str(body?.text) ?? '', type: 'interactive', buttons }
+      }
+      // Inbound button_reply / list_reply
       const btnReply = asObj(it.button_reply)
       if (btnReply && str(btnReply.title)) return { text: str(btnReply.title), type: 'reply' }
       const listReply = asObj(it.list_reply)
       if (listReply && str(listReply.title)) return { text: str(listReply.title), type: 'reply' }
       if (it.nfm_reply) return { text: '[Form response]', type: 'reply' }
+      // Other interactive types with a body
+      const body = asObj(it.body)
+      if (body && str(body.text)) return { text: str(body.text), type: 'interactive' }
     }
 
     // Inbound quick-reply button
@@ -103,7 +116,29 @@ export async function GET(req: Request) {
     if (node.contacts) return { text: '[Contact shared]', type: 'contact' }
     const reaction = asObj(node.reaction)
     if (reaction) return { text: str(reaction.emoji) || '[Reaction]', type: 'reaction' }
-    if (node.template) return { text: '[Template message]', type: 'template' }
+
+    // Template message — extract body text + button titles from components
+    const tmpl = asObj(node.template)
+    if (tmpl) {
+      const components = Array.isArray(tmpl.components) ? tmpl.components as Obj[] : []
+      let bodyText = ''
+      const buttons: string[] = []
+      for (const comp of components) {
+        if (str(comp.type) === 'BODY' && str(comp.text)) {
+          bodyText = str(comp.text)
+        }
+        if (str(comp.type) === 'BUTTONS' && Array.isArray(comp.buttons)) {
+          for (const b of comp.buttons as Obj[]) {
+            const t = str(b.text)
+            if (t) buttons.push(t)
+          }
+        }
+      }
+      if (bodyText || buttons.length) {
+        return { text: bodyText, type: 'template', buttons }
+      }
+      return { text: '[Template message]', type: 'template' }
+    }
 
     // Generic body/caption fallbacks
     const bodyObj = asObj(node.body)
@@ -114,11 +149,11 @@ export async function GET(req: Request) {
     return { text: '', type: 'unknown' }
   }
 
-  // Parse a message_content value (string or object) into { text, type }
-  function parseContent(content: unknown): { text: string; type: string } {
+  // Parse a message_content value (string or object) into { text, type, buttons? }
+  function parseContent(content: unknown): { text: string; type: string; buttons?: string[] } {
     let obj: unknown = content
     if (typeof obj === 'string') {
-      try { obj = JSON.parse(obj) } catch { return { text: obj, type: 'text' } }
+      try { obj = JSON.parse(obj) } catch { return { text: obj as string, type: 'text' } }
     }
     const o = asObj(obj)
     if (!o) return { text: '', type: 'unknown' }
@@ -143,7 +178,7 @@ export async function GET(req: Request) {
   const normalised = messagesArray
     .map(msg => {
       const content = msg.message_content ?? msg.message
-      const { text, type } = parseContent(content)
+      const { text, type, buttons } = parseContent(content)
       return {
         id: msg.id,
         sender: msg.sender,               // "user" | "bot" | "agent"
@@ -151,6 +186,7 @@ export async function GET(req: Request) {
         agent_name: msg.agent_name ?? null,
         message: text,
         msg_type: type,
+        buttons: buttons ?? [],
         created_at: msg.conversation_time ?? msg.created_at,
         status: msg.message_status ?? msg.status ?? null,
       }
