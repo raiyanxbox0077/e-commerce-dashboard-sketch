@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { sendWhatsAppMessage } from '@/lib/whatsapp/botsailor'
 import { NextResponse } from 'next/server'
 
 const BOTSAILOR_BASE = 'https://botsailor.com/api/v1'
@@ -177,18 +178,27 @@ export async function POST(req: Request) {
   if (!phoneId) return NextResponse.json({ error: 'BotSailor Phone Number ID not configured.' }, { status: 400 })
 
   const body = await req.json()
-  const { phone_number, message } = body
+  const { phone_number, message, subscriber_id } = body
   if (!phone_number || !message) return NextResponse.json({ error: 'phone_number and message required' }, { status: 400 })
 
-  // Send text message via BotSailor
-  const params = new URLSearchParams({
-    apiToken: apiKey,
-    phone_number_id: phoneId,
-    phone_number,
+  const result = await sendWhatsAppMessage({
+    apiKey,
+    phoneId,
+    phoneNumber: phone_number,
     message,
+    subscriberId: subscriber_id ?? null,
   })
 
-  const res = await fetch(`${BOTSAILOR_BASE}/whatsapp/send?${params}`, { method: 'GET' })
-  const data = await res.json()
-  return NextResponse.json(data, { status: res.status })
+  if (!result.ok) {
+    return NextResponse.json(
+      { ok: false, status: result.status, error: result.error, message: result.error },
+      { status: 400 },
+    )
+  }
+
+  return NextResponse.json({
+    ok: true,
+    status: result.status,
+    wa_message_id: result.wa_message_id,
+  })
 }
