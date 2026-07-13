@@ -917,7 +917,7 @@ export function WhatsAppTab() {
                           ) : `${mediaLabel} attachment`}
                         </div>
                       )}
-                      {displayText && <p className="text-[13px] leading-relaxed dark:text-white">{displayText}</p>}
+                      {displayText && <p className="whitespace-pre-wrap text-[13px] leading-relaxed dark:text-white">{displayText}</p>}
                       {msgButtons.length > 0 && (
                         <div className="mt-2 -mx-1 space-y-1.5">
                           {msgButtons.map((btn, bi) => (
