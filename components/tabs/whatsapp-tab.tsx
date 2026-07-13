@@ -6,6 +6,7 @@ import { Search, Send, MoreHorizontal, Phone, Users, ChevronRight, Check, CheckC
 import { cn } from "@/lib/utils"
 import { useTenant } from "@/hooks/use-tenant"
 import { createClient } from "@/lib/supabase/client"
+import { parseAttachmentMarker } from "@/lib/whatsapp/media"
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -47,6 +48,8 @@ interface Message {
   time?: string
   status?: string
   buttons?: string[]
+  media_url?: string | null
+  message_type?: string | null
 }
 
 interface WhatsappTemplate {
@@ -146,6 +149,7 @@ interface DbMessage {
   sender_name: string | null
   message_text: string | null
   message_type: string | null
+  media_url?: string | null
   direction: string | null
   created_at: string
   raw_payload: Record<string, unknown>
@@ -308,6 +312,8 @@ function dbToUiMessage(row: DbMessage, templates: WhatsappTemplate[] = []): Mess
     created_at: row.created_at,
     status: isInbound ? undefined : "sent",
     buttons,
+    media_url: row.media_url,
+    message_type: row.message_type,
   }
 }
 
@@ -472,6 +478,45 @@ export function WhatsAppTab() {
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     return filtered.map(m => dbToUiMessage(m, templates))
   }, [dbMessages, selectedPhone, isDemo, demoMessages, templates])
+
+  const hasUnresolvedMedia = useMemo(() => dbMessages.some(message =>
+    message.phone_number === selectedPhone
+    && !message.media_url
+    && Boolean(parseAttachmentMarker(message.message_text ?? ""))
+  ), [dbMessages, selectedPhone])
+
+  // BotSailor's webhook marker does not include the media URL. Resolve it from
+  // conversation history by exact wa_message_id when the conversation opens.
+  useEffect(() => {
+    if (isDemo || !selectedPhone || !hasUnresolvedMedia) return
+    const controller = new AbortController()
+
+    async function reconcileMedia() {
+      try {
+        const response = await fetch("/api/whatsapp/media/reconcile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone_number: selectedPhone }),
+          signal: controller.signal,
+        })
+        if (!response.ok) return
+        const data = await response.json() as { updated?: Array<{ id: string; media_url: string }> }
+        if (!data.updated?.length) return
+        const urls = new Map(data.updated.map(update => [update.id, update.media_url]))
+        setDbMessages(previous => previous.map(message => {
+          const mediaUrl = urls.get(message.id)
+          return mediaUrl ? { ...message, media_url: mediaUrl } : message
+        }))
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("WhatsApp media reconciliation failed:", error)
+        }
+      }
+    }
+
+    reconcileMedia()
+    return () => controller.abort()
+  }, [hasUnresolvedMedia, isDemo, selectedPhone])
 
   const chatsLoading = messagesLoading && !isDemo && visibleChats.length === 0
   const waError = !isDemo && dbMessages.length === 0 && !messagesLoading
@@ -821,6 +866,12 @@ export function WhatsAppTab() {
                 const text = typeof raw === "string" ? raw
                   : typeof raw === "object" && raw !== null ? JSON.stringify(raw)
                   : String(raw ?? "")
+                const attachment = parseAttachmentMarker(text)
+                const displayText = attachment?.caption ?? text
+                const mediaUrl = msg.media_url ?? null
+                const mediaLabel = attachment
+                  ? `${attachment.type.charAt(0).toUpperCase()}${attachment.type.slice(1)}`
+                  : "Attachment"
                 const rawTime = (rawMsg.conversation_time as string | undefined) ?? msg.created_at
                 const time = rawTime
                   ? new Date(rawTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
@@ -839,7 +890,34 @@ export function WhatsAppTab() {
                       {!isUser && (
                         <p className="text-[10px] font-semibold text-primary mb-1 uppercase tracking-wider">Bot / Agent</p>
                       )}
-                      <p className="text-[13px] leading-relaxed dark:text-white">{text}</p>
+                      {attachment && mediaUrl && attachment.type === "image" && (
+                        <a
+                          href={mediaUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mb-2 block overflow-hidden rounded-[10px] border border-hairline bg-surface"
+                          aria-label="Open image attachment in a new tab"
+                        >
+                          {/* BotSailor media uses dynamic CDN hosts that cannot be listed statically. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={mediaUrl}
+                            alt={attachment.caption || "WhatsApp image attachment"}
+                            className="max-h-80 w-full object-contain"
+                            loading="lazy"
+                          />
+                        </a>
+                      )}
+                      {attachment && (!mediaUrl || attachment.type !== "image") && (
+                        <div className="mb-2 rounded-[8px] border border-hairline bg-surface px-3 py-2 text-[12px] font-medium text-mute dark:bg-white/5 dark:text-white/80">
+                          {mediaUrl ? (
+                            <a href={mediaUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                              Open {mediaLabel.toLowerCase()}
+                            </a>
+                          ) : `${mediaLabel} attachment`}
+                        </div>
+                      )}
+                      {displayText && <p className="text-[13px] leading-relaxed dark:text-white">{displayText}</p>}
                       {msgButtons.length > 0 && (
                         <div className="mt-2 -mx-1 space-y-1.5">
                           {msgButtons.map((btn, bi) => (

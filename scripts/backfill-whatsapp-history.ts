@@ -19,6 +19,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { extractBotSailorMedia, parseAttachmentMarker } from '../lib/whatsapp/media'
 
 const BOTSAILOR_BASE = 'https://botsailor.com/api/v1'
 
@@ -123,6 +124,7 @@ interface InsertRow {
   sender_name: string | null
   message_text: string
   message_type: string
+  media_url: string | null
   direction: 'inbound' | 'outbound'
   created_at: string
   raw_payload: Obj
@@ -237,7 +239,11 @@ function normaliseMessage(
   subscriber: BotSailorSubscriber
 ): InsertRow | null {
   const content = msg.message_content ?? msg.message
-  const { text, type } = parseContent(content)
+  const parsed = parseContent(content)
+  const attachment = parseAttachmentMarker(parsed.text)
+  const media = extractBotSailorMedia(msg as unknown as Obj)
+  const text = parsed.text
+  const type = attachment?.type ?? media?.type ?? parsed.type
 
   // Skip status-only / empty rows
   if (text === '' && (type === 'status' || type === 'unknown')) return null
@@ -267,6 +273,7 @@ function normaliseMessage(
     sender_name: subscriberName,
     message_text: text,
     message_type: type,
+    media_url: media?.url ?? null,
     direction,
     created_at: createdAt,
     raw_payload: msg as unknown as Obj,

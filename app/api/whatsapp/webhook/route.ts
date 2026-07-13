@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { parseAttachmentMarker } from '@/lib/whatsapp/media'
 import { NextResponse } from 'next/server'
 
 type Obj = Record<string, unknown>
@@ -79,12 +80,14 @@ export async function POST(req: Request) {
 
     if (hasIncomingShape) {
       // INCOMING shape (relayed via n8n)
+      const messageText = str(payload.user_message)
+      const attachment = parseAttachmentMarker(messageText)
       insertRow = {
         subscriber_id: str(payload.subscriber_id) || null,
         phone_number: str(payload.chat_id),
         sender_name: str(payload.first_name) || null,
-        message_text: str(payload.user_message),
-        message_type: 'text',
+        message_text: messageText,
+        message_type: attachment?.type ?? 'text',
         direction: 'inbound',
         created_at: new Date().toISOString(),
         raw_payload: rawPayloadForInsert,
@@ -95,12 +98,14 @@ export async function POST(req: Request) {
       const rawDirection = str(payload.direction)
       const direction = rawDirection === 'incoming' ? 'inbound' : 'outbound'
       const time = str(payload.time)
+      const messageText = str(payload.message_text)
+      const attachment = parseAttachmentMarker(messageText)
       insertRow = {
         subscriber_id: str(payload.subscriber_id) || null,
         phone_number: str(payload.whatsapp_number),
         sender_name: direction === 'outbound' ? 'Agent' : null,
-        message_text: str(payload.message_text),
-        message_type: str(payload.message_type) || 'text',
+        message_text: messageText,
+        message_type: attachment?.type ?? (str(payload.message_type) || 'text'),
         direction,
         created_at: time ? new Date(time).toISOString() : new Date().toISOString(),
         raw_payload: rawPayloadForInsert,
