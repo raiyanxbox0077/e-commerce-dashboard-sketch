@@ -46,6 +46,58 @@ interface Message {
   created_at?: string
   time?: string
   status?: string
+  buttons?: string[]
+}
+
+interface WhatsappTemplate {
+  template_name: string
+  body_content: string
+  button_content: { type: string; buttons?: Array<{ type: string; text: string }> } | []
+}
+
+function normalizeForMatch(text: string): string {
+  return text
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '') // strip emoji
+    .replace(/[*#]/g, '')                    // strip markdown
+    .replace(/\s+/g, ' ')                     // collapse whitespace
+    .trim()
+    .toLowerCase()
+}
+
+function matchTemplateButtons(
+  messageText: string,
+  templates: WhatsappTemplate[]
+): string[] {
+  const normalizedMsg = normalizeForMatch(messageText)
+  if (!normalizedMsg) return []
+
+  for (const tmpl of templates) {
+    if (!tmpl.body_content) continue
+    const normalizedBody = normalizeForMatch(tmpl.body_content)
+    if (!normalizedBody) continue
+
+    // Template bodies have {{1}}, {{2}} etc as variable placeholders.
+    // Replace them with a regex that matches any value.
+    const pattern = normalizedBody
+      .replace(/\\\{\\\{\\d+\\\}\\\}/g, '.*') // escaped {{1}} → .*
+      .replace(/\{\{\d+\}\}/g, '.*')           // {{1}} → .*
+      .replace(/\\\$!?[\w-]+!?/g, '.*')         // #!variable!# → .*
+      .replace(/#\!?[\w-]+!?\$/g, '.*')         // #LEAD_USER_FIRST_NAME# → .*
+
+    try {
+      const re = new RegExp(pattern, 'i')
+      if (re.test(normalizedMsg)) {
+        // Extract button titles from button_content
+        const bc = tmpl.button_content
+        if (bc && typeof bc === 'object' && 'buttons' in bc && Array.isArray(bc.buttons)) {
+          return bc.buttons.map(b => b.text).filter(Boolean)
+        }
+      }
+    } catch {
+      continue
+    }
+  }
+  return []
 }
 
 interface DbMessage {
@@ -201,16 +253,19 @@ const DEMO_MESSAGES: Record<string, Message[]> = {
   ],
 }
 
-function dbToUiMessage(row: DbMessage): Message {
+function dbToUiMessage(row: DbMessage, templates: WhatsappTemplate[] = []): Message {
   const isInbound = row.direction === "inbound"
+  const text = row.message_text ?? ""
+  const buttons = !isInbound ? matchTemplateButtons(text, templates) : []
   return {
     id: row.id,
     sender_type: isInbound ? "user" : "agent",
     direction: isInbound ? "incoming" : "outgoing",
-    message: row.message_text ?? "",
-    text: row.message_text ?? "",
+    message: text,
+    text,
     created_at: row.created_at,
     status: isInbound ? undefined : "sent",
+    buttons,
   }
 }
 
@@ -239,6 +294,13 @@ export function WhatsAppTab() {
       : null,
     fetcher
   )
+
+  // Fetch approved templates for button matching
+  const { data: templatesData } = useSWR(
+    !isDemo ? "/api/whatsapp/templates" : null,
+    fetcher
+  )
+  const templates: WhatsappTemplate[] = templatesData?.templates ?? []
 
   // Fetch initial messages from Supabase + subscribe to realtime PUSH events
   useEffect(() => {
@@ -366,8 +428,8 @@ export function WhatsAppTab() {
     const filtered = dbMessages
       .filter(m => m.phone_number === selectedPhone)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-    return filtered.map(dbToUiMessage)
-  }, [dbMessages, selectedPhone, isDemo, demoMessages])
+    return filtered.map(m => dbToUiMessage(m, templates))
+  }, [dbMessages, selectedPhone, isDemo, demoMessages, templates])
 
   const chatsLoading = messagesLoading && !isDemo && visibleChats.length === 0
   const waError = !isDemo && dbMessages.length === 0 && !messagesLoading
@@ -721,6 +783,9 @@ export function WhatsAppTab() {
                 const time = rawTime
                   ? new Date(rawTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
                   : (msg.time ?? "")
+                const msgButtons = Array.isArray((rawMsg as Record<string, unknown>).buttons)
+                  ? (rawMsg as Record<string, unknown>).buttons as string[]
+                  : (msg.buttons ?? [])
                 return (
                   <div key={msg.id ?? i} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
                     <div className={cn(
@@ -733,6 +798,23 @@ export function WhatsAppTab() {
                         <p className="text-[10px] font-semibold text-primary mb-1 uppercase tracking-wider">Bot / Agent</p>
                       )}
                       <p className="text-[13px] leading-relaxed dark:text-white">{text}</p>
+                      {msgButtons.length > 0 && (
+                        <div className="mt-2 -mx-1 space-y-1.5">
+                          {msgButtons.map((btn, bi) => (
+                            <div
+                              key={bi}
+                              className={cn(
+                                "w-full text-center text-[12px] font-medium py-2 rounded-[8px] border select-none",
+                                isUser
+                                  ? "bg-white/10 border-white/20 text-white/90"
+                                  : "bg-surface border-hair2 text-mute dark:bg-white/5 dark:text-white/80"
+                              )}
+                            >
+                              {btn}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className={cn("flex items-center gap-1 mt-1", isUser ? "justify-end" : "justify-start")}>
                         <span className={cn("text-[10px]", isUser ? "text-white/60" : "text-faint dark:text-white/60")}>{time}</span>
                         {isUser && msg.status === "read"
