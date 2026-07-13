@@ -295,7 +295,10 @@ const DEMO_MESSAGES: Record<string, Message[]> = {
 function dbToUiMessage(row: DbMessage, templates: WhatsappTemplate[] = []): Message {
   const isInbound = row.direction === "inbound"
   const text = row.message_text ?? ""
-  const buttons = !isInbound ? matchTemplateButtons(text, templates) : []
+  // Some BotSailor template sends arrive through the webhook as `inbound`
+  // even though the text is an exact filled instance of an approved template.
+  // Match by content rather than direction so the template actions stay attached.
+  const buttons = matchTemplateButtons(text, templates)
   return {
     id: row.id,
     sender_type: isInbound ? "user" : "agent",
