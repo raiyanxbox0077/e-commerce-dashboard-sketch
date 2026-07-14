@@ -51,30 +51,9 @@ export async function POST(req: Request) {
     }
 
     // ── Common fields ────────────────────────────────────────────────
-    const waMessageId = str(payload.wa_message_id) || null
+    const waMessageId = str(payload.wa_message_id) || str(payload._wa_message_id) || null
     const rawPayloadForInsert: Obj = { ...payload }
     if (waMessageId) rawPayloadForInsert._wa_message_id = waMessageId
-
-    // ── Duplicate prevention via wa_message_id ──────────────────────
-    // If the payload carries a wa_message_id, check whether we already
-    // stored a row for it.  This is more reliable than time+text matching
-    // because incoming payloads have no timestamp field at all.
-    if (waMessageId) {
-      try {
-        const admin = createAdminClient()
-        const { data: existing } = await admin
-          .from('whatsapp_messages')
-          .select('id')
-          .contains('raw_payload', { _wa_message_id: waMessageId })
-          .limit(1)
-        if (existing && existing.length > 0) {
-          console.log('[whatsapp-webhook] duplicate wa_message_id, skipping:', waMessageId)
-          return NextResponse.json({ ok: true, skipped: true, reason: 'duplicate' })
-        }
-      } catch (dupErr) {
-        console.error('[whatsapp-webhook] duplicate check failed:', dupErr)
-      }
-    }
 
     // ── Build the insert row based on shape ─────────────────────────
     let insertRow: Record<string, unknown>
@@ -87,6 +66,26 @@ export async function POST(req: Request) {
       const phoneNumber = str(payload.chat_id)
       const attachment = parseAttachmentMarker(messageText)
       let direction: WhatsAppDirection = 'inbound'
+
+      if (waMessageId) {
+        try {
+          const admin = createAdminClient()
+          const { data: existingOutbound, error: duplicateError } = await admin
+            .from('whatsapp_messages')
+            .select('id')
+            .eq('wa_message_id', waMessageId)
+            .eq('direction', 'outbound')
+            .limit(1)
+
+          if (duplicateError) throw duplicateError
+          if (existingOutbound?.length) {
+            console.log('[whatsapp-webhook] duplicate outbound relay, skipping:', waMessageId)
+            return NextResponse.json({ ok: true, skipped: true, reason: 'duplicate_outbound' })
+          }
+        } catch (duplicateError) {
+          console.error('[whatsapp-webhook] outbound relay duplicate check failed:', duplicateError)
+        }
+      }
 
       if (waMessageId) {
         try {
@@ -119,6 +118,7 @@ export async function POST(req: Request) {
         message_text: messageText,
         message_type: attachment?.type ?? 'text',
         direction,
+        wa_message_id: waMessageId,
         created_at: new Date().toISOString(),
         raw_payload: rawPayloadForInsert,
       }
@@ -137,6 +137,7 @@ export async function POST(req: Request) {
         message_text: messageText,
         message_type: attachment?.type ?? (str(payload.message_type) || 'text'),
         direction,
+        wa_message_id: waMessageId,
         created_at: time ? new Date(time).toISOString() : new Date().toISOString(),
         raw_payload: rawPayloadForInsert,
       }
