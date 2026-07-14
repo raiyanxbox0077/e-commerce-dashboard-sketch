@@ -42,8 +42,10 @@ export async function POST(req: Request) {
     //    Has "whatsapp_number" AND "message_text".  These are messages sent
     //    BY the bot/agent TO the customer.  BotSailor delivers these directly.
     //
-    const hasIncomingShape = Boolean(str(payload.chat_id)) && Boolean(str(payload.user_message))
-    const hasOutboundShape = Boolean(str(payload.whatsapp_number)) && Boolean(str(payload.message_text))
+    const hasBotSailorFlatShape = Boolean(str(payload.chat_id)) && Boolean(str(payload.user_message))
+    const isFromN8nRelay = str(payload._relay_source) === 'n8n-inbound'
+    const hasIncomingShape = hasBotSailorFlatShape && isFromN8nRelay
+    const hasOutboundShape = hasBotSailorFlatShape && !isFromN8nRelay
 
     if (!hasIncomingShape && !hasOutboundShape) {
       console.log('[whatsapp-webhook] unrecognized payload shape, skipping')
