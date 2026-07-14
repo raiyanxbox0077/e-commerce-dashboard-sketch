@@ -91,14 +91,13 @@ export async function POST(req: Request) {
       if (waMessageId) {
         try {
           const admin = createAdminClient()
-          const botId = String(payload.whatsapp_bot_id ?? '')
-          let tenantQuery = admin
+          const { data: tenant } = await admin
             .from('tenants')
             .select('botsailor_api_key, botsailor_phone_id')
             .not('botsailor_api_key', 'is', null)
             .not('botsailor_phone_id', 'is', null)
-          if (botId) tenantQuery = tenantQuery.eq('botsailor_phone_id', botId)
-          const { data: tenant } = await tenantQuery.limit(1).maybeSingle()
+            .limit(1)
+            .maybeSingle()
 
           if (tenant?.botsailor_api_key && tenant?.botsailor_phone_id) {
             direction = await resolveRelayedMessageDirection({

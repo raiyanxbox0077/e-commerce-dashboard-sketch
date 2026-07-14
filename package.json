@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test:whatsapp-media": "tsx --test lib/whatsapp/media.test.ts"
+    "test:whatsapp-media": "tsx --test lib/whatsapp/media.test.ts",
+    "test:whatsapp-direction": "tsx --test lib/whatsapp/direction.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
