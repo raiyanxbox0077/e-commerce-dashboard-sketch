@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { resolveRelayedMessageDirection, type WhatsAppDirection } from '@/lib/whatsapp/direction'
 import { parseAttachmentMarker } from '@/lib/whatsapp/media'
 import { NextResponse } from 'next/server'
 
@@ -79,20 +80,50 @@ export async function POST(req: Request) {
     let insertRow: Record<string, unknown>
 
     if (hasIncomingShape) {
-      // INCOMING shape (relayed via n8n)
+      // RELAY shape (via n8n). Existing customer relays remain inbound. Some
+      // bot/button events arrive in this same shape, so ask BotSailor for the
+      // authoritative sender when an exact wa_message_id is available.
       const messageText = str(payload.user_message)
+      const phoneNumber = str(payload.chat_id)
       const attachment = parseAttachmentMarker(messageText)
+      let direction: WhatsAppDirection = 'inbound'
+
+      if (waMessageId) {
+        try {
+          const admin = createAdminClient()
+          const botId = String(payload.whatsapp_bot_id ?? '')
+          let tenantQuery = admin
+            .from('tenants')
+            .select('botsailor_api_key, botsailor_phone_id')
+            .not('botsailor_api_key', 'is', null)
+            .not('botsailor_phone_id', 'is', null)
+          if (botId) tenantQuery = tenantQuery.eq('botsailor_phone_id', botId)
+          const { data: tenant } = await tenantQuery.limit(1).maybeSingle()
+
+          if (tenant?.botsailor_api_key && tenant?.botsailor_phone_id) {
+            direction = await resolveRelayedMessageDirection({
+              apiKey: tenant.botsailor_api_key,
+              phoneId: tenant.botsailor_phone_id,
+              phoneNumber,
+              waMessageId,
+            }) ?? 'inbound'
+          }
+        } catch (directionError) {
+          console.error('[whatsapp-webhook] relay direction lookup failed:', directionError)
+        }
+      }
+
       insertRow = {
         subscriber_id: str(payload.subscriber_id) || null,
-        phone_number: str(payload.chat_id),
-        sender_name: str(payload.first_name) || null,
+        phone_number: phoneNumber,
+        sender_name: direction === 'outbound' ? 'Agent' : str(payload.first_name) || null,
         message_text: messageText,
         message_type: attachment?.type ?? 'text',
-        direction: 'inbound',
+        direction,
         created_at: new Date().toISOString(),
         raw_payload: rawPayloadForInsert,
       }
-      console.log('[whatsapp-webhook] incoming message:', insertRow.phone_number, '→', insertRow.message_text)
+      console.log('[whatsapp-webhook] relayed message:', insertRow.phone_number, direction, '→', insertRow.message_text)
     } else {
       // OUTBOUND shape (direct from BotSailor)
       const rawDirection = str(payload.direction)
