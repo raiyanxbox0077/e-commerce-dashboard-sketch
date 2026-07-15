@@ -1,4 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { resolveRelayedMessageDirection, type WhatsAppDirection } from '@/lib/whatsapp/direction'
+import { parseAttachmentMarker } from '@/lib/whatsapp/media'
 import { NextResponse } from 'next/server'
 
 type Obj = Record<string, unknown>
@@ -40,8 +42,10 @@ export async function POST(req: Request) {
     //    Has "whatsapp_number" AND "message_text".  These are messages sent
     //    BY the bot/agent TO the customer.  BotSailor delivers these directly.
     //
-    const hasIncomingShape = Boolean(str(payload.chat_id)) && Boolean(str(payload.user_message))
-    const hasOutboundShape = Boolean(str(payload.whatsapp_number)) && Boolean(str(payload.message_text))
+    const hasBotSailorFlatShape = Boolean(str(payload.chat_id)) && Boolean(str(payload.user_message))
+    const isFromN8nRelay = str(payload._relay_source) === 'n8n-inbound'
+    const hasIncomingShape = hasBotSailorFlatShape && isFromN8nRelay
+    const hasOutboundShape = hasBotSailorFlatShape && !isFromN8nRelay
 
     if (!hasIncomingShape && !hasOutboundShape) {
       console.log('[whatsapp-webhook] unrecognized payload shape, skipping')
@@ -49,59 +53,93 @@ export async function POST(req: Request) {
     }
 
     // ── Common fields ────────────────────────────────────────────────
-    const waMessageId = str(payload.wa_message_id) || null
+    const waMessageId = str(payload.wa_message_id) || str(payload._wa_message_id) || null
     const rawPayloadForInsert: Obj = { ...payload }
     if (waMessageId) rawPayloadForInsert._wa_message_id = waMessageId
-
-    // ── Duplicate prevention via wa_message_id ──────────────────────
-    // If the payload carries a wa_message_id, check whether we already
-    // stored a row for it.  This is more reliable than time+text matching
-    // because incoming payloads have no timestamp field at all.
-    if (waMessageId) {
-      try {
-        const admin = createAdminClient()
-        const { data: existing } = await admin
-          .from('whatsapp_messages')
-          .select('id')
-          .contains('raw_payload', { _wa_message_id: waMessageId })
-          .limit(1)
-        if (existing && existing.length > 0) {
-          console.log('[whatsapp-webhook] duplicate wa_message_id, skipping:', waMessageId)
-          return NextResponse.json({ ok: true, skipped: true, reason: 'duplicate' })
-        }
-      } catch (dupErr) {
-        console.error('[whatsapp-webhook] duplicate check failed:', dupErr)
-      }
-    }
 
     // ── Build the insert row based on shape ─────────────────────────
     let insertRow: Record<string, unknown>
 
     if (hasIncomingShape) {
-      // INCOMING shape (relayed via n8n)
+      // RELAY shape (via n8n). Existing customer relays remain inbound. Some
+      // bot/button events arrive in this same shape, so ask BotSailor for the
+      // authoritative sender when an exact wa_message_id is available.
+      const messageText = str(payload.user_message)
+      const phoneNumber = str(payload.chat_id)
+      const attachment = parseAttachmentMarker(messageText)
+      let direction: WhatsAppDirection = 'inbound'
+
+      if (waMessageId) {
+        try {
+          const admin = createAdminClient()
+          const { data: existingOutbound, error: duplicateError } = await admin
+            .from('whatsapp_messages')
+            .select('id')
+            .eq('wa_message_id', waMessageId)
+            .eq('direction', 'outbound')
+            .limit(1)
+
+          if (duplicateError) throw duplicateError
+          if (existingOutbound?.length) {
+            console.log('[whatsapp-webhook] duplicate outbound relay, skipping:', waMessageId)
+            return NextResponse.json({ ok: true, skipped: true, reason: 'duplicate_outbound' })
+          }
+        } catch (duplicateError) {
+          console.error('[whatsapp-webhook] outbound relay duplicate check failed:', duplicateError)
+        }
+      }
+
+      if (waMessageId) {
+        try {
+          const admin = createAdminClient()
+          const { data: tenant } = await admin
+            .from('tenants')
+            .select('botsailor_api_key, botsailor_phone_id')
+            .not('botsailor_api_key', 'is', null)
+            .not('botsailor_phone_id', 'is', null)
+            .limit(1)
+            .maybeSingle()
+
+          if (tenant?.botsailor_api_key && tenant?.botsailor_phone_id) {
+            direction = await resolveRelayedMessageDirection({
+              apiKey: tenant.botsailor_api_key,
+              phoneId: tenant.botsailor_phone_id,
+              phoneNumber,
+              waMessageId,
+            }) ?? 'inbound'
+          }
+        } catch (directionError) {
+          console.error('[whatsapp-webhook] relay direction lookup failed:', directionError)
+        }
+      }
+
       insertRow = {
         subscriber_id: str(payload.subscriber_id) || null,
-        phone_number: str(payload.chat_id),
-        sender_name: str(payload.first_name) || null,
-        message_text: str(payload.user_message),
-        message_type: 'text',
-        direction: 'inbound',
+        phone_number: phoneNumber,
+        sender_name: direction === 'outbound' ? 'Agent' : str(payload.first_name) || null,
+        message_text: messageText,
+        message_type: attachment?.type ?? 'text',
+        direction,
+        wa_message_id: waMessageId,
         created_at: new Date().toISOString(),
         raw_payload: rawPayloadForInsert,
       }
-      console.log('[whatsapp-webhook] incoming message:', insertRow.phone_number, '→', insertRow.message_text)
+      console.log('[whatsapp-webhook] relayed message:', insertRow.phone_number, direction, '→', insertRow.message_text)
     } else {
       // OUTBOUND shape (direct from BotSailor)
       const rawDirection = str(payload.direction)
       const direction = rawDirection === 'incoming' ? 'inbound' : 'outbound'
       const time = str(payload.time)
+      const messageText = str(payload.message_text)
+      const attachment = parseAttachmentMarker(messageText)
       insertRow = {
         subscriber_id: str(payload.subscriber_id) || null,
         phone_number: str(payload.whatsapp_number),
         sender_name: direction === 'outbound' ? 'Agent' : null,
-        message_text: str(payload.message_text),
-        message_type: str(payload.message_type) || 'text',
+        message_text: messageText,
+        message_type: attachment?.type ?? (str(payload.message_type) || 'text'),
         direction,
+        wa_message_id: waMessageId,
         created_at: time ? new Date(time).toISOString() : new Date().toISOString(),
         raw_payload: rawPayloadForInsert,
       }

@@ -60,6 +60,8 @@ export async function sendWhatsAppMessage(opts: {
     return { ok: false, status, error: errMsg, raw: data }
   }
 
+  const waMessageId = String(data?.wa_message_id ?? '') || null
+
   // Success — insert into whatsapp_messages
   try {
     const admin = createAdminClient()
@@ -70,6 +72,7 @@ export async function sendWhatsAppMessage(opts: {
       message_text: message,
       message_type: 'text',
       direction: 'outbound',
+      wa_message_id: waMessageId,
       raw_payload: data,
     })
     if (error) {
@@ -82,7 +85,7 @@ export async function sendWhatsAppMessage(opts: {
   return {
     ok: true,
     status,
-    wa_message_id: String(data?.wa_message_id ?? ''),
+    wa_message_id: waMessageId ?? '',
     raw: data,
   }
 }
