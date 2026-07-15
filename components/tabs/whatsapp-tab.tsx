@@ -365,7 +365,13 @@ export function WhatsAppTab() {
         .limit(500)
       if (mounted) {
         if (error) console.error("Realtime load error:", error)
-        setDbMessages(data ?? [])
+        setDbMessages(current => {
+          const snapshot = data ?? []
+          const snapshotIds = new Set(snapshot.map(message => message.id))
+          const realtimeOnly = current.filter(message => !snapshotIds.has(message.id))
+          return [...realtimeOnly, ...snapshot]
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        })
         setMessagesLoading(false)
       }
     }
@@ -394,6 +400,24 @@ export function WhatsAppTab() {
             })
             return [newRow, ...withoutOptimistic]
           })
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "whatsapp_messages" },
+        (payload) => {
+          const updatedRow = payload.new as DbMessage
+          setDbMessages(previous => previous.map(message =>
+            message.id === updatedRow.id ? updatedRow : message
+          ))
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "whatsapp_messages" },
+        (payload) => {
+          const deletedRow = payload.old as Pick<DbMessage, "id">
+          setDbMessages(previous => previous.filter(message => message.id !== deletedRow.id))
         }
       )
       .subscribe()
