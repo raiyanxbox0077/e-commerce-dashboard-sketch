@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import { resolveRelayedMessageDirection, type WhatsAppDirection } from '@/lib/whatsapp/direction'
 import { parseAttachmentMarker } from '@/lib/whatsapp/media'
 import { NextResponse } from 'next/server'
 
@@ -61,13 +60,12 @@ export async function POST(req: Request) {
     let insertRow: Record<string, unknown>
 
     if (hasIncomingShape) {
-      // RELAY shape (via n8n). Existing customer relays remain inbound. Some
-      // bot/button events arrive in this same shape, so ask BotSailor for the
-      // authoritative sender when an exact wa_message_id is available.
+      // RELAY shape (via n8n). The _relay_source marker is added exclusively
+      // on the customer-reply relay path, so this branch is always inbound.
       const messageText = str(payload.user_message)
       const phoneNumber = str(payload.chat_id)
       const attachment = parseAttachmentMarker(messageText)
-      let direction: WhatsAppDirection = 'inbound'
+      const direction: 'inbound' = 'inbound'
 
       if (waMessageId) {
         try {
@@ -86,30 +84,6 @@ export async function POST(req: Request) {
           }
         } catch (duplicateError) {
           console.error('[whatsapp-webhook] outbound relay duplicate check failed:', duplicateError)
-        }
-      }
-
-      if (waMessageId) {
-        try {
-          const admin = createAdminClient()
-          const { data: tenant } = await admin
-            .from('tenants')
-            .select('botsailor_api_key, botsailor_phone_id')
-            .not('botsailor_api_key', 'is', null)
-            .not('botsailor_phone_id', 'is', null)
-            .limit(1)
-            .maybeSingle()
-
-          if (tenant?.botsailor_api_key && tenant?.botsailor_phone_id) {
-            direction = await resolveRelayedMessageDirection({
-              apiKey: tenant.botsailor_api_key,
-              phoneId: tenant.botsailor_phone_id,
-              phoneNumber,
-              waMessageId,
-            }) ?? 'inbound'
-          }
-        } catch (directionError) {
-          console.error('[whatsapp-webhook] relay direction lookup failed:', directionError)
         }
       }
 
