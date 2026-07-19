@@ -867,7 +867,10 @@ export function WhatsAppTab() {
                   : typeof raw === "object" && raw !== null ? JSON.stringify(raw)
                   : String(raw ?? "")
                 const attachment = parseAttachmentMarker(text)
-                const displayText = attachment?.caption ?? text
+                // Rows stored before webhook normalization may contain
+                // literal "\n" two-character sequences; convert so
+                // whitespace-pre-wrap can break lines.
+                const displayText = (attachment?.caption ?? text).replace(/\\n/g, '\n')
                 const mediaUrl = msg.media_url ?? null
                 const mediaLabel = attachment
                   ? `${attachment.type.charAt(0).toUpperCase()}${attachment.type.slice(1)}`

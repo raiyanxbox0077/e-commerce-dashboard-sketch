@@ -41,10 +41,8 @@ export async function POST(req: Request) {
     //    Has "whatsapp_number" AND "message_text".  These are messages sent
     //    BY the bot/agent TO the customer.  BotSailor delivers these directly.
     //
-    const hasBotSailorFlatShape = Boolean(str(payload.chat_id)) && Boolean(str(payload.user_message))
-    const isFromN8nRelay = str(payload._relay_source) === 'n8n-inbound'
-    const hasIncomingShape = hasBotSailorFlatShape && isFromN8nRelay
-    const hasOutboundShape = hasBotSailorFlatShape && !isFromN8nRelay
+    const hasIncomingShape = Boolean(str(payload.chat_id)) && Boolean(str(payload.user_message))
+    const hasOutboundShape = Boolean(str(payload.whatsapp_number)) && Boolean(str(payload.message_text))
 
     if (!hasIncomingShape && !hasOutboundShape) {
       console.log('[whatsapp-webhook] unrecognized payload shape, skipping')
@@ -62,7 +60,9 @@ export async function POST(req: Request) {
     if (hasIncomingShape) {
       // RELAY shape (via n8n). The _relay_source marker is added exclusively
       // on the customer-reply relay path, so this branch is always inbound.
-      const messageText = str(payload.user_message)
+      // Some sources send literal "\n" two-character sequences instead of
+      // real newline characters; normalize so the dashboard can line-break.
+      const messageText = str(payload.user_message).replace(/\\n/g, '\n')
       const phoneNumber = str(payload.chat_id)
       const attachment = parseAttachmentMarker(messageText)
       const direction: 'inbound' = 'inbound'
@@ -104,7 +104,8 @@ export async function POST(req: Request) {
       const rawDirection = str(payload.direction)
       const direction = rawDirection === 'incoming' ? 'inbound' : 'outbound'
       const time = str(payload.time)
-      const messageText = str(payload.message_text)
+      // Normalize literal "\n" sequences to real newlines (see inbound branch).
+      const messageText = str(payload.message_text).replace(/\\n/g, '\n')
       const attachment = parseAttachmentMarker(messageText)
       insertRow = {
         subscriber_id: str(payload.subscriber_id) || null,
