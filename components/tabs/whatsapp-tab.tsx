@@ -108,15 +108,15 @@ function normalizeForMatch(text: string): string {
 }
 
 /**
- * Match a message's text against all known templates.  Returns the
- * button titles from the first matching template, or an empty array.
+ * Match a message's text against all known templates.  Returns whether
+ * any template matched, plus the button titles from the first match.
  */
-function matchTemplateButtons(
+function matchTemplate(
   messageText: string,
   templates: WhatsappTemplate[]
-): string[] {
+): { matched: boolean; buttons: string[] } {
   const normalizedMsg = normalizeForMatch(messageText)
-  if (!normalizedMsg) return []
+  if (!normalizedMsg) return { matched: false, buttons: [] }
 
   for (const tmpl of templates) {
     if (!tmpl.body_content) continue
@@ -128,15 +128,16 @@ function matchTemplateButtons(
       const re = new RegExp(pattern, 'i')
       if (re.test(normalizedMsg)) {
         const bc = tmpl.button_content
-        if (bc && typeof bc === 'object' && 'buttons' in bc && Array.isArray(bc.buttons)) {
-          return bc.buttons.map(b => b.text).filter(Boolean)
-        }
+        const buttons = bc && typeof bc === 'object' && 'buttons' in bc && Array.isArray(bc.buttons)
+          ? bc.buttons.map(b => b.text).filter(Boolean)
+          : []
+        return { matched: true, buttons }
       }
     } catch {
       continue
     }
   }
-  return []
+  return { matched: false, buttons: [] }
 }
 
 interface DbMessage {
@@ -293,12 +294,12 @@ const DEMO_MESSAGES: Record<string, Message[]> = {
 }
 
 function dbToUiMessage(row: DbMessage, templates: WhatsappTemplate[] = []): Message {
-  const isInbound = row.direction === "inbound"
   const text = row.message_text ?? ""
-  // Some BotSailor template sends arrive through the webhook as `inbound`
-  // even though the text is an exact filled instance of an approved template.
-  // Match by content rather than direction so the template actions stay attached.
-  const buttons = matchTemplateButtons(text, templates)
+  const { matched, buttons } = matchTemplate(text, templates)
+  // Bot template messages relayed via n8n arrive in the "incoming" webhook
+  // shape and are stored as inbound.  If the text matches a known template
+  // the message is bot/agent-sent regardless of the stored direction.
+  const isInbound = row.direction === "inbound" && !matched
   return {
     id: row.id,
     sender_type: isInbound ? "user" : "agent",
